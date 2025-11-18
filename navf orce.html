@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<style>
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+}
+.navbar {
+  overflow: hidden;
+  background-color: #333; 
+}
+
+.navbar a {
+  float: left;
+  font-size: 16px;
+  color: white;
+  text-align: center;
+  padding: 14px 16px;
+  text-decoration: none;
+}
+
+.subnav {
+  float: left;
+  overflow: hidden;
+}
+
+.subnav .subnavbtn {
+  font-size: 16px;  
+  border: none;
+  outline: none;
+  color: white;
+  padding: 14px 16px;
+  background-color: inherit;
+  font-family: inherit;
+  margin: 0;
+}
+
+.navbar a:hover, .subnav:hover .subnavbtn {
+  background-color: rgb(107, 106, 70);
+}
+
+.subnav-content {
+  display: none;
+  position: absolute;
+  left: 0;
+  background-color: rgb(117, 117, 72);
+  width: 100%;
+  z-index: 1;
+}
+
+.subnav-content a {
+  float: left;
+  color: white;
+  text-decoration: none;
+}
+
+.subnav-content a:hover {
+  background-color: #eee;
+  color: black;
+}
+
+.subnav:hover .subnav-content {
+  display: block;
+}
+.row {
+  display: flex;
+  margin: 0;
+  border-radius: 0;
+}
+
+
+/* Create three equal columns that sits next to each other */
+.column {
+  flex: 33.33%;
+  margin: 0;
+  border-radius: 0;
+  
+}
+.zoom {
+  transition: transform 0.6s; /* Animation */
+}
+
+.zoom:hover {
+  transform: scale(1.05); /* (150% zoom - Note: if the zoom is too large, it will go outside of the viewport) */
+  
+}
+button{
+  padding: 0;
+  border: 0;
+  margin: 5px;
+  border-color: rgb(211, 210, 197);
+  background-color: rgb(211, 210, 197);
+
+}
+</style>
+</head>
+<body>
+  
+  <div style="text-align: center;">
+    <img src="navforce.png" alt="HTML Image">
+</div>
+<div class="navbar">
+  <a href="#home">Home</a>
+  <div class="subnav">
+    <button class="subnavbtn">Navwarnings<i class="fa fa-caret-down"></i></button>
+    <div class="subnav-content">
+      <a href="#company">Navarea</a>
+      <a href="#team">Coastal</a>
+      <a href="#careers">Source</a>
+    </div>
+  </div> 
+  <div class="subnav">
+    <button class="subnavbtn">Marine Notices<i class="fa fa-caret-down"></i></button>
+    <div class="subnav-content">
+      <a href="#bring">**</a>
+      <a href="#deliver">**</a>
+      <a href="#package">**</a>
+      <a href="#express">**</a>
+    </div>
+  </div> 
+  <div class="subnav">
+    <button class="subnavbtn">Partners <i class="fa fa-caret-down"></i></button>
+    <div class="subnav-content">
+      <a href="#link1">**</a>
+      <a href="#link2">**</a>
+      <a href="#link3">**</a>
+      <a href="#link4">**</a>
+    </div>
+  </div>
+  <a href="#contact">Contact</a>
+  <button onclick="location.href='contact.html';"></button>
+</div>
+
+<div style="text-align: center;">
+  <p>NAVAREA, Coastal navigational warnings in force on 03-01-2025
+Please refer to OFFICIAL sources, Inmarsat SafetyNET or international NAVTEX services, for more complete information.
+UPDATED AT: 03-01-2025 15:15 UTC</p>
+</div>
+<td></td>
+
+<div style="text-align: center;">
+<div class="row">
+  <div class="column">       
+    <p><div class="zoom"><img src="navarea.PNG" width="800px"></p></div>
+    <p><button onclick="location.href='navarea.html';"><div class="zoom"><img src="open.PNG" width="300px"></div></button></button></p>            
+        <p>Navarea Warnings</p><p></p> 
+      </div>
+      <div class="column">
+        <p><div class="zoom"><img src="coastal.PNG" width="800px"></div></p>
+        <p><button onclick="location.href='coastal.html';">
+          <div class="zoom"><img src="open.PNG" width="300px"></div></button></button></p>
+        <p>Coastal Warnings</p>
+        <p></p>
+      </div></div></div>
+
+
+
+
+
+</body>
+</html>

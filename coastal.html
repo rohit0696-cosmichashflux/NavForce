@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Space Debris & Antarctic Map with Hover Coordinates</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+<style>
+  html, body { height: 100%; margin: 0; font-family: Arial, sans-serif; }
+  #map { height: 100%; width: 100%; }
+  .billboard-pin {
+    background-color: #39FF14;
+    color: #000;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-align: center;
+    border: 2px solid #fff;
+    box-shadow: 0 0 4px #000;
+    font-size: 16px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+const map = L.map('map').setView([-35, 135], 3);
+
+// OpenStreetMap tiles
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors',
+  maxZoom: 19
+}).addTo(map);
+
+// Antarctic red boundary
+const antarcticCoords = [
+  [-80.00, 0.00], [-30.00, 80.00], [-30.00, 95.00], [-12.00, 95.00],
+  [-12.00, 127.00], [-10.00, 127.00], [-10.00, 141.00], [0.00, 141.00],
+  [0.00, 170.00], [-29.00, 170.00], [-45.00, 160.00], [-80.00, 160.00]
+];
+const boundary = L.polygon(antarcticCoords, { color: 'red', weight: 3, fill: false }).addTo(map);
+
+// Dots for Antarctic coordinates
+antarcticCoords.forEach(coord => {
+  L.circleMarker(coord, { radius: 6, color: 'red', fillColor: 'red', fillOpacity: 1 })
+   .addTo(map)
+   .bindPopup(`Lat: ${coord[0]}°, Lng: ${coord[1]}°`);
+});
+
+// Named coordinates with pins
+const namedPins = [
+  {name:'300/24', lat:-23.5317, lng:151.6018},
+  {name:'195/25', lat:-33.1322, lng:112.1331},
+  {name:'198/25', lat:-10.675, lng:130.116},
+  {name:'214/25', lat:-12.9833, lng:124.265},
+  {name:'216/25', lat:-39.2395, lng:142.9137},
+  {name:'068/25', lat:-47.4833, lng:118.563},
+  {name:'221/25', lat:-20.15, lng:115.04},
+  {name:'225/25', lat:-19.9635, lng:115.218},
+  {name:'227/25', lat:-39.2396, lng:142.9139},
+  {name:'228/25', lat:-20.355, lng:115.365},
+  {name:'230/25', lat:-12.51, lng:128.49},
+  {name:'232/25', lat:-22.3325, lng:152.7305},
+  {name:'235/25', lat:-21.4033, lng:114.088},
+  {name:'236/25', lat:-12.3893, lng:130.631},
+  {name:'079/25', lat:-25.5, lng:75.5},
+  {name:'237/25', lat:-20.405, lng:116.14},
+  {name:'239/25', lat:-34.568, lng:118.8},
+  {name:'240/25', lat:-41.0557, lng:146.7895},
+  {name:'025/25', lat:-10.9625, lng:131.2555}
+];
+
+// Add billboard pins with hover tooltips
+namedPins.forEach(pin => {
+  const marker = L.marker([pin.lat, pin.lng], {
+    icon: L.divIcon({
+      className: 'billboard-pin',
+      html: pin.name,
+      iconSize: [100, 30],
+      iconAnchor: [50, 15]
+    })
+  }).addTo(map);
+
+  // Show coordinates on hover
+  marker.bindTooltip(`Lat: ${pin.lat}°, Lng: ${pin.lng}°`, {permanent:false, direction:'top'});
+});
+
+const allCoords = antarcticCoords.concat(namedPins.map(p => [p.lat, p.lng]));
+map.fitBounds(L.latLngBounds(allCoords), { padding: [30, 30] });
+
+</script>
+</body>
+</html>
