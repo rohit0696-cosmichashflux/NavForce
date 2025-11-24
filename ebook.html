@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>NavForce Offline Viewer</title>
+  <style>
+    :root{
+      --bg: #0b0f14;
+      --card-bg: #0f1418;
+      --text: #e6f3ff;
+      --muted: #7b8795;
+      --accent: #27a8ff;
+      --nav: #061523;
+      --radius: 12px;
+      --glass: rgba(255,255,255,0.04);
+    }
+    body.light{
+      --bg: #d3d2c5;
+      --card-bg: #ffffff;
+      --text: #1e1e1c;
+      --muted: #55606a;
+      --accent: #007bff;
+      --nav: #003b73;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background:var(--bg);
+      color:var(--text);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      transition:background .28s, color .28s;
+      line-height:1.35;
+      position:relative;
+      min-height:100vh;
+    }
+
+    /* Particle canvas */
+    #particleCanvas{position:fixed;inset:0;z-index:-1;display:block}
+
+    /* NAVBAR */
+    .navbar{
+      position:sticky;
+      top:0;
+      z-index:40;
+      background:linear-gradient(180deg, rgba(0,0,0,0.3), rgba(0,0,0,0.25));
+      color:var(--text);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      padding:12px 18px;
+      box-shadow:0 8px 30px rgba(0,0,0,.5);
+      backdrop-filter:blur(8px);
+      border-bottom:1px solid rgba(40,140,255,0.08);
+    }
+    .brand{display:flex;align-items:center;gap:12px}
+    .brand img.logo{width:52px;height:52px;border-radius:8px;object-fit:cover;box-shadow:0 8px 28px rgba(39,168,255,0.12)}
+    .brand .titles .title{font-size:18px;font-weight:800}
+    .brand .titles .sub{font-size:12px;color:var(--muted)}
+
+    .controls{display:flex;gap:10px;align-items:center}
+    .btn{background:var(--glass);color:var(--text);border-radius:10px;padding:8px 12px;border:1px solid rgba(255,255,255,0.04);cursor:pointer}
+    .btn:active{transform:translateY(1px)}
+
+    /* layout */
+    .wrap{max-width:1200px;margin:18px auto;padding:10px;display:grid;grid-template-columns:1fr 360px;gap:20px}
+    @media (max-width:980px){.wrap{grid-template-columns:1fr;padding:12px}}
+
+    h1.app-title{margin:0 0 6px 0;font-size:20px}
+    p.version{margin:0;color:var(--muted);font-size:13px}
+
+    /* category card */
+    .category{margin-top:18px;border-radius:var(--radius);overflow:hidden;background:var(--card-bg);box-shadow:0 12px 40px rgba(0,0,0,.5);border:1px solid rgba(39,168,255,0.06)}
+    .category .head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;user-select:none}
+    .category .head h2{margin:0;font-size:16px;font-weight:700}
+    .category .head .meta{color:var(--muted);font-size:13px}
+
+    .chev{width:34px;height:34px;display:grid;place-items:center;border-radius:8px;transition:transform .28s}
+    .collapse{padding:12px 16px 18px 16px;border-top:1px solid rgba(255,255,255,0.02);overflow:hidden;transition:max-height .42s cubic-bezier(.2,.9,.2,1),opacity .25s;max-height:0;opacity:0}
+    .collapse.open{max-height:1200px;opacity:1}
+
+    .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+
+    .card{display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border:1px solid rgba(39,168,255,0.045);transition:transform .18s,box-shadow .18s}
+    .card:hover{transform:translateY(-6px) scale(1.02);box-shadow:0 18px 48px rgba(39,168,255,0.08)}
+
+    .thumb{width:100%;height:140px;object-fit:cover;border-radius:8px;background:linear-gradient(90deg,var(--muted), #e6eefc)}
+    .card .title{font-weight:700;font-size:14px;margin:0}
+    .card .subtitle{font-size:13px;color:var(--muted);margin-top:4px}
+    .card .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .open-btn{padding:8px 10px;border-radius:8px;border:0;cursor:pointer;font-weight:700;background:var(--accent);color:#001}
+    .download-link{font-size:12px;color:var(--muted);text-decoration:underline;cursor:pointer}
+
+    /* aside preview */
+    .aside{display:flex;flex-direction:column;gap:14px}
+    .panel{background:var(--card-bg);border-radius:12px;padding:12px;box-shadow:0 10px 24px rgba(0,0,0,.45);border:1px solid rgba(255,255,255,0.02)}
+    .panel h3{margin:0 0 8px 0;font-size:15px}
+    .preview{width:100%;height:520px;border-radius:12px;border:1px solid rgba(255,255,255,0.03);overflow:hidden;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent)}
+    .preview iframe{width:100%;height:100%;border:0;display:block;transform-origin:center;}
+
+    /* slide animation for iframe */
+    .preview iframe.enter{animation:slideIn .45s cubic-bezier(.16,.8,.3,1)}
+    @keyframes slideIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+    /* bottom nav */
+    .bottom-nav{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);width:92%;max-width:520px;background:rgba(10,16,24,0.45);backdrop-filter:blur(10px);padding:10px;border-radius:18px;display:flex;justify-content:space-around;align-items:center;z-index:90;border:1px solid rgba(39,168,255,0.08)}
+    .bottom-nav a{color:var(--text);text-decoration:none;font-weight:700;padding:6px 10px;border-radius:10px}
+    .bottom-nav a:hover{color:var(--accent)}
+
+    /* small screens tweaks */
+    @media (max-width:600px){.thumb{height:110px}.preview{height:320px}.wrap{grid-template-columns:1fr}}
+
+  </style>
+</head>
+<body>
+
+  <!-- Particle canvas -->
+  <canvas id="particleCanvas"></canvas>
+
+  <header class="navbar" role="banner">
+    <div class="brand" title="NavForce">
+      <img src="navforce.png" alt="NavForce logo" class="logo" />
+      <div class="titles">
+        <div class="title"><span style="color:var(--accent)">Nav</span>Force</div>
+        <div class="sub">Offline Reader • Version</div>
+      </div>
+    </div>
+
+    <div class="controls" role="navigation" aria-label="controls">
+      <div class="search" title="Search manuals">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="opacity:.8"><path d="M21 21l-4.35-4.35" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <input id="search" type="search" placeholder="Search manuals (press /)" aria-label="Search manuals" />
+      </div>
+
+      <button id="darkToggle" class="btn" aria-pressed="false">Dark</button>
+      <a href="index.html" class="btn">Home</a>
+    </div>
+  </header>
+
+  <main class="wrap" role="main">
+    <section>
+      <h1 class="app-title">OFFLINE READER</h1>
+      <p class="version">A compact offline manual viewer</p>
+
+      <!-- Category: SOLAS -->
+      <div class="category" data-id="solas">
+        <div class="head" tabindex="0" role="button" aria-expanded="false" aria-controls="solas-collapse">
+          <div>
+            <h2>SOLAS &amp; Codes</h2>
+            <div class="meta">Important conventions and codes</div>
+          </div>
+          <div class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></div>
+        </div>
+
+        <div id="solas-collapse" class="collapse" aria-hidden="true">
+          <div class="grid">
+            <article class="card" data-title="solas consolidated 2024" data-sub="2024">
+              <img class="thumb" src="solas.PNG" alt="SOLAS cover">
+              <p class="title">SOLAS Consolidated Edition</p>
+              <p class="subtitle">2024</p>
+              <div class="row">
+                <button class="open-btn" data-file="SOLAS (2024).pdf">Open</button>
+                <a class="download-link" href="SOLAS (2024).pdf" download>Download</a>
+              </div>
+            </article>
+
+            <article class="card" data-title="fss code 2015" data-sub="2015">
+              <img class="thumb" src="fss.PNG" alt="FSS cover">
+              <p class="title">FSS Code</p>
+              <p class="subtitle">2015 Edition</p>
+              <div class="row">
+                <button class="open-btn" data-file="FSS/FSS CODE 2015 EDITION.pdf">Open</button>
+                <a class="download-link" href="FSS/FSS CODE 2015 EDITION.pdf" download>Download</a>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category: Cargo Codes -->
+      <div class="category" data-id="cargo">
+        <div class="head" tabindex="0" role="button" aria-expanded="false" aria-controls="cargo-collapse">
+          <div>
+            <h2>Cargo Codes</h2>
+            <div class="meta">Cargo handling &amp; guidance</div>
+          </div>
+          <div class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></div>
+        </div>
+
+        <div id="cargo-collapse" class="collapse" aria-hidden="true">
+          <div class="grid">
+            <article class="card" data-title="imsbc code supplement 2023" data-sub="2023">
+              <img class="thumb" src="imsbc.png" alt="IMSBC cover">
+              <p class="title">IMSBC Code and Supplement</p>
+              <p class="subtitle">2023 Edition</p>
+              <div class="row">
+                <button class="open-btn" data-file="IMSBC_Code_and_Supplement_Incorporating_Amendment_07_23_2023_Edition.pdf">Open</button>
+                <a class="download-link" href="IMSBC_Code_and_Supplement_Incorporating_Amendment_07_23_2023_Edition.pdf" download>Download</a>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category: SMS Manuals -->
+      <div class="category" data-id="sms">
+        <div class="head" tabindex="0" role="button" aria-expanded="false" aria-controls="sms-collapse">
+          <div>
+            <h2>SMS Manuals</h2>
+            <div class="meta">Safety management system docs</div>
+          </div>
+          <div class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></div>
+        </div>
+
+        <div id="sms-collapse" class="collapse" aria-hidden="true">
+          <div class="grid">
+            <article class="card" data-title="confined space program 2022" data-sub="2022">
+              <img class="thumb" src="confined.PNG" alt="Confined space">
+              <p class="title">Confined Space Program</p>
+              <p class="subtitle">2022</p>
+              <div class="row">
+                <button class="open-btn" data-file="Confined_space_program_1713578505.pdf">Open</button>
+                <a class="download-link" href="Confined_space_program_1713578505.pdf" download>Download</a>
+              </div>
+            </article>
+
+            <article class="card" data-title="coswp ms 2022" data-sub="2022">
+              <img class="thumb" src="CSWP.PNG" alt="COSWP">
+              <p class="title">COSWP-MS</p>
+              <p class="subtitle">2022 Amendment 7</p>
+              <div class="row">
+                <button class="open-btn" data-file="Code_of_safe_working_practices_for_merchant_seafarers__COSWP__amendment_7_2022.pdf">Open</button>
+                <a class="download-link" href="Code_of_safe_working_practices_for_merchant_seafarers__COSWP__amendment_7_2022.pdf" download>Download</a>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category: Navigation & Others -->
+      <div class="category" data-id="nav">
+        <div class="head" tabindex="0" role="button" aria-expanded="false" aria-controls="nav-collapse">
+          <div>
+            <h2>Navigation &amp; Others</h2>
+            <div class="meta">Guides, questionnaires &amp; BMP</div>
+          </div>
+          <div class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></div>
+        </div>
+
+        <div id="nav-collapse" class="collapse" aria-hidden="true">
+          <div class="grid">
+            <article class="card" data-title="reef vts user guide" data-sub="">
+              <img class="thumb" src="REEF.PNG" alt="Reef VTS">
+              <p class="title">Reef VTS User Guide</p>
+              <div class="row">
+                <button class="open-btn" data-file="reef-user-guide (1).pdf">Open</button>
+                <a class="download-link" href="reef-user-guide (1).pdf" download>Download</a>
+              </div>
+            </article>
+
+            <article class="card" data-title="risq v3 1 2024" data-sub="May 2024">
+              <img class="thumb" src="rightship.JPG" alt="Rightship">
+              <p class="title">RISQ V3.1</p>
+              <p class="subtitle">May 2024</p>
+              <div class="row">
+                <button class="open-btn" data-file="rightship_inspection_questionnaire_v_31 (1).pdf">Open</button>
+                <a class="download-link" href="rightship_inspection_questionnaire_v_31 (1).pdf" download>Download</a>
+              </div>
+            </article>
+
+            <article class="card" data-title="bmp west africa 2020" data-sub="2020">
+              <img class="thumb" src="bmpwest.PNG" alt="BMP West Africa">
+              <p class="title">BMP West Africa</p>
+              <p class="subtitle">2020 Edition</p>
+              <div class="row">
+                <button class="open-btn" data-file="BMP-West-Africa.pdf">Open</button>
+                <a class="download-link" href="BMP-West-Africa.pdf" download>Download</a>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <aside class="aside" aria-label="preview and tips">
+      <div class="panel">
+        <h3>Preview</h3>
+        <div class="preview" id="preview">
+          <!-- PDF will be embedded here -->
+          <div style="padding:18px; color:var(--muted)">Select a manual to preview it here.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Tips</h3>
+        <div class="tips">
+          <ul>
+            <li>Press <kbd>/</kbd> to focus the search box.</li>
+            <li>Use the Open button to preview a PDF or Download to save a local copy.</li>
+            <li>Dark mode setting persists across sessions.</li>
+          </ul>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <footer style="text-align:center;padding:18px;color:var(--muted);font-size:13px">© NavForce • Offline Reader</footer>
+
+  <!-- Bottom glass navigation -->
+  <div class="bottom-nav" role="navigation" aria-label="bottom">
+    <a href="index.html">Home</a>
+    <a href="#" onclick="document.getElementById('search').focus();return false;">Search</a>
+    <a href="navwarnings.html">NavWarnings</a>
+  </div>
+
+  <script>
+    // --- Particles (subtle starfield) ---
+    const canvas = document.getElementById('particleCanvas');
+    const ctx = canvas.getContext('2d');
+    let W, H, particles=[];
+    function resizeCanvas(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight}
+    window.addEventListener('resize',resizeCanvas);resizeCanvas();
+    function make(){particles=[];for(let i=0;i<120;i++){particles.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.8+0.5,vx:(Math.random()-.5)*0.35,vy:(Math.random()-.5)*0.35})}}make();
+    function tick(){ctx.clearRect(0,0,W,H);ctx.fillStyle='rgba(39,168,255,0.6)';particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;ctx.fillRect(p.x,p.y,p.r,p.r)});requestAnimationFrame(tick)}tick();
+
+    // --- Dark mode persistence (syncs with existing logic) ---
+    const darkToggle = document.getElementById('darkToggle');
+    function applyDark(pref){
+      if(pref){document.body.classList.remove('light');document.body.classList.add('dark');}
+      else{document.body.classList.remove('dark');document.body.classList.add('light');}
+      darkToggle.textContent = pref ? 'Light' : 'Dark';
+      try{ localStorage.setItem('navforce-dark', pref ? '1' : '0'); }catch(e){}
+    }
+    (function(){try{applyDark(localStorage.getItem('navforce-dark')==='1')}catch(e){applyDark(true)}})();
+    darkToggle.addEventListener('click', ()=>{applyDark(!document.body.classList.contains('light'))});
+
+    // --- Category collapse/expand ---
+    const $$ = sel => Array.from(document.querySelectorAll(sel));
+    function bindCategories(){$$('.category').forEach(cat=>{const head=cat.querySelector('.head');const collapse=cat.querySelector('.collapse');const chev=head.querySelector('.chev');function setOpen(open){if(open){collapse.classList.add('open');head.setAttribute('aria-expanded','true');collapse.setAttribute('aria-hidden','false');chev.style.transform='rotate(180deg)';}else{collapse.classList.remove('open');head.setAttribute('aria-expanded','false');collapse.setAttribute('aria-hidden','true');chev.style.transform='rotate(0deg)';}}setOpen(false);head.addEventListener('click',()=>setOpen(!collapse.classList.contains('open')));head.addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();setOpen(!collapse.classList.contains('open'));}})});
+    }
+    bindCategories();
+
+    // --- Search filter (debounced) ---
+    const searchInput = document.getElementById('search');
+    function debounce(fn,ms=180){let t;return function(...a){clearTimeout(t);t=setTimeout(()=>fn.apply(this,a),ms)}}
+    function filterCards(q){q=(q||'').trim().toLowerCase();const cards=$$('article.card');cards.forEach(card=>{const t=(card.dataset.title||'')+' '+(card.dataset.sub||'');const match=t.toLowerCase().includes(q);card.style.display=match?'flex':'none'});$$('.category').forEach(cat=>{const visible=Array.from(cat.querySelectorAll('article.card')).some(a=>a.style.display!=='none');const collapse=cat.querySelector('.collapse');if(!visible){collapse.style.display='none'}else{collapse.style.display=''}})}
+    const doFilter=debounce(e=>filterCards(e.target.value),160);if(searchInput)searchInput.addEventListener('input',doFilter);
+    window.addEventListener('keydown',ev=>{if(ev.key==='/'&&document.activeElement!==searchInput){ev.preventDefault();searchInput.focus();searchInput.select();}});
+
+    // --- Open preview with slide animation ---
+    function openPreview(file){const preview=document.getElementById('preview');preview.innerHTML='';const iframe=document.createElement('iframe');iframe.src=file;iframe.className='enter';iframe.onload=()=>console.log('PDF loaded',file);preview.appendChild(iframe);if(window.innerWidth<900)preview.scrollIntoView({behavior:'smooth',block:'center'});}
+    document.addEventListener('click',e=>{const btn=e.target.closest('.open-btn');if(!btn)return;const file=btn.getAttribute('data-file');if(!file)return;openPreview(file)});
+
+    // --- Bind downloads (no-op) ---
+    function bindDownloads(){$$('a.download-link').forEach(a=>a.addEventListener('click',e=>{}));}
+    bindDownloads();
+
+    // --- Optional: open first PDF on wide screens ---
+    (function(){const first=document.querySelector('.open-btn[data-file]');if(first&&window.innerWidth>700)openPreview(first.getAttribute('data-file'));})();
+
+  </script>
+</body>
+</html> 
