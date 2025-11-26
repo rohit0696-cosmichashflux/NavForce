@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>World Weather Overlay</title>
+<style>
+    :root {
+        --bg: #0a0a0a;
+        --text: #fff;
+        --panel-bg: rgba(0,0,0,0.9);
+        --marker-bg: rgba(0,0,0,0.6);
+        --marker-color: #0ff;
+        --accent: #0ff;
+    }
+    body.light-mode {
+        --bg: #ffffff;
+        --text: #000;
+        --panel-bg: rgba(255,255,255,0.92);
+        --marker-bg: rgba(255,255,255,0.85);
+        --marker-color: #ff0088;
+        --accent: #ff0088;
+    }
+    * {
+        transition: background-color 0.35s, color 0.35s, filter 0.35s;
+    }
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        background-color: var(--bg);
+        color: var(--text);
+        overflow: hidden;
+    }
+    .map-container {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+    }
+    .world-map {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        filter: brightness(0.6);
+    }
+    body.light-mode .world-map {
+        filter: brightness(1);
+    }
+    .location-marker {
+        position: absolute;
+        background: var(--marker-bg);
+        color: var(--marker-color);
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 14px;
+        transform: translate(-50%, -50%);
+        cursor: pointer;
+        font-weight: bold;
+        border: 1px solid var(--accent);
+        box-shadow: 0 0 10px var(--accent);
+        opacity: 0.9;
+    }
+    .location-marker.bounce {
+        animation: pop 0.4s ease forwards;
+    }
+    @keyframes pop {
+        0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+        100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    }
+    .weather-panel {
+        position: fixed;
+        bottom: -280px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 92%;
+        max-width: 520px;
+        background: var(--panel-bg);
+        backdrop-filter: blur(9px);
+        color: var(--text);
+        padding: 20px;
+        border-radius: 18px 18px 0 0;
+        transition: bottom 0.35s ease;
+        z-index: 100;
+        box-shadow: 0 -5px 18px var(--accent);
+    }
+    .weather-panel.active {
+        bottom: 0;
+    }
+    .drag-handle {
+        width: 70px;
+        height: 7px;
+        margin: 0 auto 14px;
+        background: var(--accent);
+        border-radius: 12px;
+    }
+    .top-buttons {
+        position: absolute;
+        top: 15px;
+        left: 15px;
+        display: flex;
+        gap: 10px;
+        z-index: 200;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    button, select {
+        padding: 10px 14px;
+        border-radius: 10px;
+        border: 2px solid transparent;
+        cursor: pointer;
+        font-weight: bold;
+        backdrop-filter: blur(4px);
+    }
+    .gps-btn { background: #1e90ff; color: #fff; }
+    .layer-btn { background: #ffa500; color: #000; }
+    .theme-btn {
+        background: transparent;
+        border: 2px solid var(--accent);
+        color: var(--accent);
+        font-size: 20px;
+        width: 45px;
+        height: 45px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        box-shadow: 0 0 10px var(--accent);
+        transition: transform 0.35s;
+    }
+    .theme-btn:active {
+        transform: rotate(180deg) scale(1.1);
+    }
+    #latLonInput {
+        width: 200px;
+        padding: 7px;
+        border-radius: 7px;
+        border: 1px solid #aaa;
+        margin-right: 2px;
+        font-size: 15px;
+        color: var(--text);
+        background-color: var(--panel-bg);
+    }
+    body.light-mode #latLonInput {
+        border: 1px solid #999;
+        color: #222;
+        background-color: #f5eeee;
+    }
+    #cursorLatLon {
+        min-width: 210px;
+        padding: 7px 12px;
+        border-radius: 7px;
+        background: var(--panel-bg);
+        color: var(--text);
+        font-family: monospace;
+        font-size: 15px;
+    }
+    /* Stylish Home Tab */
+    .home-tab {
+        position: absolute;
+        top: 18px;
+        right: 32px;
+        z-index: 300;
+        padding: 10px 24px 10px 22px;
+        border-radius: 16px 8px 24px 8px;
+        background: linear-gradient(97deg, #141a3a 75%, #48f8dc 100%);
+        color: #fff;
+        font-size: 20px;
+        font-weight: bold;
+        letter-spacing: 2px;
+        box-shadow: 0 2px 18px #13eedd90, 0 .5px 4px #00000055;
+        border: 2.5px solid #0ff;
+        cursor: pointer;
+        transition: transform 0.22s, box-shadow 0.22s, background 0.32s;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        user-select: none;
+    }
+    .home-tab:hover {
+        transform: scale(1.08) rotate(-2deg);
+        background: linear-gradient(100deg, #33ecc4 70%, #141a3a 100%);
+        box-shadow: 0 4px 22px #1fe3da, 0 .5px 5px #00000095;
+        border-color: #33ecc4;
+    }
+    .home-icon {
+        font-size: 25px;
+        filter: drop-shadow(0 0 6px #13eedd99);
+    }
+</style>
+</head>
+<body>
+<div class="map-container">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/8/80/World_map_-_low_resolution.svg" class="world-map" alt="World Map">
+    <div class="clouds" id="cloudOverlay"></div>
+    <div class="heatmap" id="heatOverlay"></div>
+    <div class="top-buttons">
+        <button class="gps-btn">📍</button>
+        <select class="layer-btn">
+            <option value="none">Overlay: Off</option>
+            <option value="clouds">☁️ Clouds</option>
+            <option value="heatmap">🔥 Heatmap</option>
+        </select>
+        <button class="theme-btn" id="themeBtn">🌙</button>
+        <input id="latLonInput" placeholder="Deg Min N/S, Deg Min E/W">
+        <button class="gps-btn" id="latLonGo">Go</button>
+        <div id="cursorLatLon">—</div>
+    </div>
+    <!-- Stylish Home Tab Top Right -->
+    <div class="home-tab" id="homeTab">
+        <span class="home-icon">🏠</span>
+        HOME
+    </div>
+    <div class="weather-panel" id="weatherPanel">
+        <div class="drag-handle" id="dragHandle"></div>
+        <div id="panelContent"></div>
+    </div>
+</div>
+<script>
+const apiKey = '5eeba413966ed394db4d2df220015db4';
+
+const mapContainer = document.querySelector(".map-container");
+let currentMarker = null;
+function lonLatFromClick(e) {
+    const r = mapContainer.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width;
+    const y = (e.clientY - r.top) / r.height;
+    const lon = x * 360 - 180;
+    const latRad = (0.5 - y) * Math.PI;
+    const lat = (180 / Math.PI) * Math.atan(Math.sinh(latRad));
+    return { lat, lon, xPercent: x * 100, yPercent: y * 100 };
+}
+mapContainer.addEventListener("click", fetchWeather);
+
+async function fetchWeather(e) {
+    if (e.target.closest('.top-buttons') || e.target.closest('.weather-panel')) { return; }
+    const p = lonLatFromClick(e);
+    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${p.lat}&lon=${p.lon}&units=metric&appid=${apiKey}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.cod !== 200) return;
+    placeMarker(p, data);
+    showDetailsPanel(data);
+}
+function placeMarker(pos, data) {
+    if (currentMarker) currentMarker.remove();
+    const marker = document.createElement("div");
+    marker.className = "location-marker bounce";
+    marker.style.top = pos.yPercent + "%";
+    marker.style.left = pos.xPercent + "%";
+    marker.textContent = `${Math.round(data.main.temp)}°C`;
+    currentMarker = marker;
+    mapContainer.appendChild(marker);
+}
+function showDetailsPanel(data) {
+    panelContent.innerHTML = `
+        <h3>${data.name || "Unknown"}</h3>
+        <p>🌡 Temp: ${Math.round(data.main.temp)}°C</p>
+        <p>💧 Humidity: ${data.main.humidity}%</p>
+        <p>🌬 Wind: ${data.wind.speed} m/s</p>
+        <p>☁️ Condition: ${data.weather[0].description}</p>`;
+    panel.classList.add("active");
+}
+const panel = document.getElementById("weatherPanel");
+const panelContent = document.getElementById("panelContent");
+panel.addEventListener("mousedown", () => {
+    document.addEventListener("mousemove", closeOnDrag);
+});
+document.addEventListener("mouseup", () => {
+    document.removeEventListener("mousemove", closeOnDrag);
+});
+function closeOnDrag(e) {
+    if (e.movementY > 20) panel.classList.remove("active");
+}
+// Theme Persistence + Toggle
+const themeBtn = document.getElementById("themeBtn");
+function applyTheme(saved) {
+    if (saved === "light") {
+        document.body.classList.add("light-mode");
+        themeBtn.textContent = "☀️";
+    } else {
+        document.body.classList.remove("light-mode");
+        themeBtn.textContent = "🌙";
+    }
+}
+applyTheme(localStorage.getItem("theme"));
+themeBtn.addEventListener("click", () => {
+    const isLight = document.body.classList.toggle("light-mode");
+    localStorage.setItem("theme", isLight ? "light" : "dark");
+    applyTheme(isLight ? "light" : "dark");
+});
+// Layers
+const layerDropdown = document.querySelector(".layer-btn");
+const cloudOverlay = document.getElementById("cloudOverlay");
+const heatOverlay = document.getElementById("heatOverlay");
+layerDropdown.addEventListener("change", () => {
+    cloudOverlay.style.display = layerDropdown.value === "clouds" ? "block" : "none";
+    heatOverlay.style.display = layerDropdown.value === "heatmap" ? "block" : "none";
+});
+
+// --- Deg/Min + N/S/E/W Lat/Lon Input ---
+const latLonInput = document.getElementById("latLonInput");
+const latLonGo = document.getElementById("latLonGo");
+latLonGo.addEventListener("click", () => handleLatLonInput());
+latLonInput.addEventListener("keypress", e => {
+    if (e.key === "Enter") handleLatLonInput();
+});
+function handleLatLonInput() {
+    const value = latLonInput.value.trim();
+    const pattern = /([0-9]{1,3})[°\s]*([0-9]{1,2}(?:\.\d+)?)[\'\s]*([NSns]),?[\s]*([0-9]{1,3})[°\s]*([0-9]{1,2}(?:\.\d+)?)[\'\s]*([EWew])/;
+    const match = value.match(pattern);
+    if (!match) {
+        alert("Please enter as: 37 47.5 N, 122 25.2 W");
+        return;
+    }
+    let latDeg = parseFloat(match[1]);
+    let latMin = parseFloat(match[2]);
+    let latDir = match[3].toUpperCase();
+    let lonDeg = parseFloat(match[4]);
+    let lonMin = parseFloat(match[5]);
+    let lonDir = match[6].toUpperCase();
+    if ([latDeg, latMin, lonDeg, lonMin].some(isNaN)) {
+        alert("Invalid numbers in input.");
+        return;
+    }
+    let lat = latDeg + (latMin / 60);
+    if (latDir === "S") lat = -lat;
+    let lon = lonDeg + (lonMin / 60);
+    if (lonDir === "W") lon = -lon;
+    if (Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+        alert("Latitude or longitude out of valid range.");
+        return;
+    }
+    fetchWeatherByCoords(lat, lon);
+}
+async function fetchWeatherByCoords(lat, lon) {
+    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.cod !== 200) {
+        alert("Weather unavailable for these coordinates.");
+        return;
+    }
+    const x = (lon + 180) / 360 * 100;
+    const latRad = Math.atanh(Math.sin(lat * Math.PI / 180));
+    const y = (0.5 - latRad / Math.PI) * 100;
+    placeMarker({ lat, lon, xPercent: x, yPercent: y }, data);
+    showDetailsPanel(data);
+}
+// --- Cursor Lat/Lon display ---
+function toDegMin(val, isLat) {
+    const abs = Math.abs(val);
+    const deg = Math.floor(abs);
+    const min = (abs - deg) * 60;
+    const dir = isLat
+        ? (val >= 0 ? 'N' : 'S')
+        : (val >= 0 ? 'E' : 'W');
+    return `${deg}°${min.toFixed(1)}'${dir}`;
+}
+const cursorLatLon = document.getElementById("cursorLatLon");
+
+mapContainer.addEventListener("mousemove", function(e){
+    if (e.target.closest('.top-buttons') || e.target.closest('.weather-panel')) {
+        cursorLatLon.textContent = '—';
+        return;
+    }
+    const r = mapContainer.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width;
+    const y = (e.clientY - r.top) / r.height;
+    if (x < 0 || x > 1 || y < 0 || y > 1) {
+        cursorLatLon.textContent = '—';
+        return;
+    }
+    const lon = x * 360 - 180;
+    const latRad = (0.5 - y) * Math.PI;
+    const lat = (180 / Math.PI) * Math.atan(Math.sinh(latRad));
+    cursorLatLon.textContent = `${toDegMin(lat, true)}, ${toDegMin(lon, false)}`;
+});
+mapContainer.addEventListener("mouseleave", () => cursorLatLon.textContent = '—');
+
+// Home button goes to index.html
+document.getElementById("homeTab").addEventListener("click", function() {
+    window.location.href = "index.html";
+});
+</script>
+</body>
+</html>
