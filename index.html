@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NavForce Home</title>
+
+<style>
+:root {
+  /* ----------- THEME VARIABLES ----------- */
+  --bg-dark: #0a0f1a;
+  --text-dark: #e0e6f0;
+  --card-dark: rgba(255,255,255,0.06);
+  --border-dark: rgba(255,255,255,0.10);
+
+  --bg-dusk: #181d2b;
+  --text-dusk: #e7dbbb;
+  --card-dusk: rgba(231,219,187,0.08);
+  --border-dusk: rgba(231,219,187,0.13);
+
+  --bg-day: #f2f6fb;
+  --text-day: #223;
+  --card-day: rgba(0,0,0,0.03);
+  --border-day: rgba(0,0,0,0.09);
+
+  --accent: #8ab4ff;
+}
+
+body {
+  margin:0;
+  font-family: Inter, Arial;
+  background:var(--bg-dark);
+  color:var(--text-dark);
+  height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  transition:background .35s, color .35s;
+}
+
+body.day {
+  background:var(--bg-day);
+  color:var(--text-day);
+}
+body.dusk {
+  background:var(--bg-dusk);
+  color:var(--text-dusk);
+}
+body.light {
+  background:var(--bg-light);
+  color:var(--text-light);
+}
+
+/* ----------- PARTICLES ----------- */
+#particles {
+  position:fixed;
+  top:0; left:0;
+  width:100%; height:100%;
+  z-index:-1;
+  background:transparent;
+}
+
+/* ----------- THEME TOGGLE ----------- */
+.theme-toggle-group {
+  position:fixed;
+  top:18px;
+  right:20px;
+  z-index:99;
+  display: flex;
+  gap: 10px;
+  user-select:none;
+}
+.theme-toggle {
+  font-size:22px;
+  cursor:pointer;
+  color:var(--accent);
+  transition:transform .25s;
+  background:none;
+  border:none;
+  outline:none;
+}
+.theme-toggle:hover { transform:scale(1.15); }
+
+/* ----------- CONTAINER ----------- */
+.container {
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  gap:28px;
+  animation:fadeIn .75s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity:0; transform:translateY(20px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+h1 {
+  margin:0;
+  font-size:28px;
+  font-weight:800;
+  color:var(--accent);
+  text-shadow:0 0 12px rgba(138,180,255,0.45);
+}
+
+/* ----------- TABS (CARDS) ----------- */
+.tabs {
+  display:flex;
+  gap:26px;
+  justify-content:center;
+  flex-wrap:wrap;
+}
+.card {
+  background:var(--card-dark);
+  border:1px solid var(--border-dark);
+  padding:32px 48px;
+  border-radius:18px;
+  font-size:20px;
+  font-weight:700;
+  cursor:pointer;
+  color:var(--text-dark);
+  backdrop-filter:blur(10px);
+  transition:transform .32s ease, box-shadow .32s ease, background .32s ease;
+  user-select:none;
+  animation:pulse 3s infinite ease-in-out;
+}
+body.day .card {
+  background:var(--card-day);
+  border-color:var(--border-day);
+  color:var(--text-day);
+}
+body.dusk .card {
+  background:var(--card-dusk);
+  border-color:var(--border-dusk);
+  color:var(--text-dusk);
+}
+body.light .card {
+  background:var(--card-light);
+  border-color:var(--border-light);
+  color:var(--text-light);
+}
+.card:hover {
+  transform:scale(1.08);
+  box-shadow:0 0 40px rgba(0,123,255,0.55);
+}
+.card:active {
+  transform:scale(0.94) translateY(3px);
+}
+
+/* Neon pulse */
+@keyframes pulse {
+  0%,100% { box-shadow:0 0 14px rgba(0,123,255,.35); }
+  50% { box-shadow:0 0 32px rgba(0,123,255,.85); }
+}
+
+/* ----------- BOTTOM NAV ----------- */
+.bottom-nav {
+  position:fixed;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%);
+  background:rgba(255,255,255,0.07);
+  backdrop-filter:blur(14px);
+  padding:12px 26px;
+  border-radius:20px;
+  display:flex;
+  gap:26px;
+  border:1px solid rgba(255,255,255,0.12);
+  z-index:50;
+  animation:slideUp .6s ease forwards;
+}
+
+@keyframes slideUp {
+  from { opacity:0; transform:translate(-50%,20px); }
+  to   { opacity:1; transform:translate(-50%,0); }
+}
+
+.bottom-nav button {
+  background:none;
+  border:0;
+  color:var(--accent);
+  font-size:20px;
+  cursor:pointer;
+  transition:transform .28s;
+}
+.bottom-nav button:hover {
+  transform:scale(1.2);
+}
+</style>
+</head>
+
+<body>
+<canvas id="particles"></canvas>
+
+<div class="theme-toggle-group">
+  <button class="theme-toggle" onclick="setTheme('dark')" title="Dark Mode">🌙</button>
+  <button class="theme-toggle" onclick="setTheme('dusk')" title="Dusk Mode">🌇</button>
+  <button class="theme-toggle" onclick="setTheme('day')" title="Day Mode">🌞</button>
+</div>
+
+<div class="container">
+  <h1>NavForce — Main Hub</h1>
+  <div class="tabs">
+    <div class="card" onclick="goTo('ebook.html')">📘 E-Book Reader</div>
+    <div class="card" onclick="goTo('navwarnings.html')">⚠️ NavWarnings & Notices</div>
+    <div class="card" onclick="goTo('wx.html')">🌦️ Weather</div>
+  </div>
+</div>
+
+<div class="bottom-nav">
+  <button onclick="goTo('index.html')">🏠</button>
+  <button onclick="goTo('ebook.html')">📘</button>
+  <button onclick="goTo('navwarnings.html')">⚠️</button>
+</div>
+
+<script>
+function setTheme(theme) {
+  document.body.classList.remove('day', 'dusk', 'light');
+  if (theme === 'day') document.body.classList.add('day');
+  else if (theme === 'dusk') document.body.classList.add('dusk');
+  else document.body.classList.remove('day', 'dusk', 'light'); // Dark as default
+}
+
+/* ----------- NAVIGATION WITH SLIDE EFFECT ----------- */
+function goTo(page) {
+  document.body.style.opacity = "0";
+  setTimeout(() => { location.href = page; }, 250);
+}
+
+/* ----------- PARTICLES ENGINE ----------- */
+const canvas = document.getElementById("particles");
+const ctx = canvas.getContext("2d");
+let W, H, particles=[];
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+window.onresize = resize;
+resize();
+
+/* Improved physics */
+for (let i=0; i<120; i++) {
+  particles.push({
+    x: Math.random()*W,
+    y: Math.random()*H,
+    vx: (Math.random() - 0.5) * 0.35,
+    vy: (Math.random() - 0.5) * 0.35,
+    size: Math.random()*2 + 1
+  });
+}
+
+function animate() {
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = "rgba(138,180,255,0.8)";
+
+  particles.forEach(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    if (p.x < 0 || p.x > W) p.vx *= -1;
+    if (p.y < 0 || p.y > H) p.vy *= -1;
+    ctx.fillRect(p.x, p.y, p.size, p.size);
+  });
+
+  requestAnimationFrame(animate);
+}
+animate();
+</script>
+</body>
+</html>
