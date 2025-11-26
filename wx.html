@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Seamless Weather Map - Mobile/Tab Friendly with Modes/Zoom</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, maximum-scale=1">
+<style>
+body, html { margin:0; padding:0; height:100%; width:100%; }
+body { height: 100dvh; }
+.map-container { width:100vw; height:100vh; position:relative; overflow:hidden; }
+.map-zoom-wrap {
+    width:300vw; height:100vh;
+    display:flex; position:absolute; top:0; left:0; will-change:transform;
+    transition:transform 0.32s cubic-bezier(.68,-0.55,.27,1.55);
+    touch-action:none;
+}
+.map-zoom-wrap.dragging { transition:none; }
+.world-map {
+    width:100vw; height:100vh; min-width:100vw; min-height:100vh; max-width:100vw; max-height:100vh;
+    flex-shrink:0; object-fit:cover;
+    user-drag:none; user-select:none; pointer-events:none;
+    filter: brightness(.67) contrast(1.13) sepia(0.11) hue-rotate(-17deg);
+    background-color: #202f44;
+    transition: filter .25s, background-color .2s;
+}
+body.dusk-mode .world-map {
+    filter: brightness(1.08) sepia(0.08) hue-rotate(-13deg) saturate(1.22) contrast(1.09);
+    background-color: #7e87c0;
+}
+body.day-mode .world-map {
+    filter: brightness(1.13) contrast(1.16) sepia(0.03) hue-rotate(-7deg) saturate(1.25);
+    background-color: #daf0ff;
+}
+body.dark-mode .world-map,
+body:not(.dusk-mode):not(.day-mode) .world-map {
+    filter: brightness(.67) contrast(1.13) sepia(0.11) hue-rotate(-17deg);
+    background-color: #202f44;
+}
+.top-buttons {
+    position:absolute; top:0; left:0; width:100vw;
+    display:flex; flex-wrap:wrap; gap:7px; z-index:100;
+    align-items:center; justify-content:flex-start;
+    background:linear-gradient(90deg, rgba(32,38,48,0.98) 72%,rgba(42,39,60,0.45) 100%);
+    padding:8px 5px 3px 5px;
+    box-sizing:border-box;
+}
+button, select {
+    border-radius:10px; border:2px solid transparent;
+    cursor:pointer; font-weight:bold; backdrop-filter:blur(2px);
+    font-size:1.07em; padding:8px 10px;
+}
+.mode-btn { width:2.3em; height:2.3em; padding:0; min-width:36px; font-size:1.4em;}
+#latLonInput, #placeInput { min-width:110px; width:24vw; max-width:152px; padding:7px; border-radius:7px; border:1px solid #aaa; margin-right:2px; font-size:1em; color:#fff; background-color:#222b; box-sizing:border-box;}
+#cursorLatLon{ min-width:100px; padding:6px 10px; border-radius:7px; background:#222b; color:#fff; font-family:monospace; font-size:16px; margin-bottom:2px;}
+.location-marker {
+    position: absolute;
+    background: rgba(38,40,52,0.68); color: #ffe066; padding: 6px 10px;
+    border-radius: 6px; font-size: 1em; transform: translate(-50%, -50%);
+    cursor: pointer; font-weight: bold; border: 1px solid #ffbb33;
+    box-shadow: 0 0 10px #ffbb33; opacity: 0.94; z-index: 19;
+    max-width: 55vw; text-align:center;
+}
+.location-marker.bounce { animation: pop 0.4s ease forwards; }
+@keyframes pop {
+    0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+</style>
+</head>
+<body>
+<div class="map-container">
+  <div class="map-zoom-wrap" id="mapZoomWrap">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/8/80/World_map_-_low_resolution.svg" class="world-map" draggable="false" alt="">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/8/80/World_map_-_low_resolution.svg" class="world-map" draggable="false" alt="">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/8/80/World_map_-_low_resolution.svg" class="world-map" draggable="false" alt="">
+  </div>
+  <div class="top-buttons">
+    <button class="mode-btn" id="duskBtn" title="Dusk Mode">🌆</button>
+    <button class="mode-btn" id="dayBtn" title="Day Mode">🌤️</button>
+    <button class="mode-btn" id="darkBtn" title="Dark Mode">🌙</button>
+    <button class="mode-btn" id="zoomInBtn" title="Zoom In">＋</button>
+    <button class="mode-btn" id="zoomOutBtn" title="Zoom Out">－</button>
+    <input id="placeInput" placeholder="Type place name" autocomplete="off">
+    <button id="placeGo">Go</button>
+    <input id="latLonInput" placeholder="Deg Min N/S, Deg Min E/W" autocomplete="off">
+    <button id="latLonGo">Go</button>
+    <div id="cursorLatLon">—</div>
+  </div>
+</div>
+<script>
+// -- SEAMLESS PAN/ZOOM (MOBILE+DESKTOP)
+function mod(n, m) { return ((n % m) + m) % m; }
+const mapZoomWrap = document.getElementById("mapZoomWrap");
+let mapZoom = 1, mapX = 0, mapY = 0;
+function getWorldWidth() { return window.innerWidth; }
+function renderMapTransform() {
+    const ww = getWorldWidth();
+    mapX = mod(mapX, ww);
+    let offset = mapX - ww;
+    mapZoomWrap.style.transform = `scale(${mapZoom}) translate(${offset/mapZoom}px,${mapY/mapZoom}px)`;
+}
+renderMapTransform();
+// Mouse
+let dragging = false, dragStart = null;
+mapZoomWrap.addEventListener("mousedown", function(e){
+    if (e.button !== 0 || e.target.closest('.top-buttons')) return;
+    dragging = true; dragStart = { x: e.clientX, y: e.clientY, mapX, mapY };
+    mapZoomWrap.classList.add('dragging');
+});
+window.addEventListener("mousemove", function(e){
+    if (!dragging) return;
+    let dx = e.clientX - dragStart.x, dy = e.clientY - dragStart.y;
+    mapX = dragStart.mapX + dx; mapY = dragStart.mapY + dy;
+    renderMapTransform();
+});
+window.addEventListener("mouseup", function() {
+    dragging = false; mapZoomWrap.classList.remove('dragging');
+});
+// Touch
+let touchDragging = false, touchStartX = 0, touchStartY = 0, touchOrigX = 0, touchOrigY = 0;
+mapZoomWrap.addEventListener('touchstart', function(e) {
+    if (e.target.closest('.top-buttons')) return;
+    const t = e.touches[0];
+    touchDragging = true;
+    touchStartX = t.clientX;
+    touchStartY = t.clientY;
+    touchOrigX = mapX;
+    touchOrigY = mapY;
+    mapZoomWrap.classList.add('dragging');
+}, {passive:false});
+mapZoomWrap.addEventListener('touchmove', function(e) {
+    if (!touchDragging) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    let dx = t.clientX - touchStartX, dy = t.clientY - touchStartY;
+    mapX = touchOrigX + dx; mapY = touchOrigY + dy;
+    renderMapTransform();
+}, {passive:false});
+mapZoomWrap.addEventListener('touchend', function() {
+    touchDragging = false;
+    mapZoomWrap.classList.remove('dragging');
+}, {passive:false});
+window.addEventListener('resize', ()=>{ mapX=0; mapY=0; renderMapTransform(); });
+
+// --- Zoom Buttons ---
+const zoomInBtn = document.getElementById("zoomInBtn");
+const zoomOutBtn = document.getElementById("zoomOutBtn");
+zoomInBtn.addEventListener("click", () => {
+    if (mapZoom < 4) { mapZoom += 0.25; renderMapTransform(); }
+});
+zoomOutBtn.addEventListener("click", () => {
+    if (mapZoom > 1) { mapZoom -= 0.25; renderMapTransform(); }
+});
+
+// -- Modes (dusk, day, dark)
+const duskBtn = document.getElementById("duskBtn");
+const dayBtn  = document.getElementById("dayBtn");
+const darkBtn = document.getElementById("darkBtn");
+function setMode(mode) {
+    document.body.classList.remove("dusk-mode", "day-mode", "dark-mode");
+    if (mode === "dusk") document.body.classList.add("dusk-mode");
+    else if (mode === "day") document.body.classList.add("day-mode");
+    else document.body.classList.add("dark-mode");
+    localStorage.setItem("mode",mode);
+}
+duskBtn.addEventListener("click", ()=>setMode("dusk"));
+dayBtn.addEventListener("click",  ()=>setMode("day"));
+darkBtn.addEventListener("click", ()=>setMode("dark"));
+(function(){
+    let mode = localStorage.getItem("mode");
+    if (!mode) mode = "dusk";
+    setMode(mode);
+})();
+// ---- Place and LatLon Functions (SIMPLE DEMO, expand as needed)
+let currentMarker = null;
+function placeMarkerAt(lat, lon) {
+    const ww = getWorldWidth();
+    const x = ((lon + 180) / 360) * 100;
+    const latRad = Math.atanh(Math.sin(lat * Math.PI / 180));
+    const y = (0.5 - latRad / Math.PI) * 100;
+    if (currentMarker) currentMarker.remove();
+    const marker = document.createElement("div");
+    marker.className = "location-marker bounce";
+    marker.style.top = y + "%";
+    marker.style.left = x + "%";
+    marker.textContent = `🌡️`;
+    currentMarker = marker;
+    mapZoomWrap.appendChild(marker);
+}
+const apikey = "5eeba413966ed394db4d2df220015db4";
+const placeInput = document.getElementById("placeInput");
+const placeGo = document.getElementById("placeGo");
+placeGo.addEventListener("click", async function(){
+    let place = placeInput.value.trim();
+    if (!place) return;
+    let url = "https://api.openweathermap.org/data/2.5/weather?q=" + encodeURIComponent(place) + "&appid=" + apikey + "&units=metric";
+    let res = await fetch(url); let data = await res.json();
+    if (!data.coord) return alert("Place not found");
+    placeMarkerAt(data.coord.lat, data.coord.lon);
+});
+placeInput.addEventListener("keypress", function(e){ if(e.key==="Enter") placeGo.click(); });
+const latLonInput = document.getElementById("latLonInput");
+const latLonGo = document.getElementById("latLonGo");
+latLonGo.addEventListener("click", function(){
+    const value = latLonInput.value.trim();
+    const pattern = /([0-9]{1,3})[°\s]*([0-9]{1,2}(?:\.\d+)?)[\'\s]*([NSns]),?[\s]*([0-9]{1,3})[°\s]*([0-9]{1,2}(?:\.\d+)?)[\'\s]*([EWew])/;
+    const match = value.match(pattern);
+    if (!match) { alert("Format: 37 47.5 N, 122 25.2 W"); return; }
+    let latDeg = parseFloat(match[1]), latMin = parseFloat(match[2]), latDir = match[3].toUpperCase();
+    let lonDeg = parseFloat(match[4]), lonMin = parseFloat(match[5]), lonDir = match[6].toUpperCase();
+    let lat = latDeg + (latMin / 60); if (latDir === "S") lat = -lat;
+    let lon = lonDeg + (lonMin / 60); if (lonDir === "W") lon = -lon;
+    placeMarkerAt(lat, lon);
+});
+latLonInput.addEventListener("keypress", function(e){ if(e.key==="Enter") latLonGo.click(); });
+const cursorLatLon = document.getElementById("cursorLatLon");
+mapZoomWrap.addEventListener("mousemove", function(e){
+    const ww = getWorldWidth();
+    const r = mapZoomWrap.getBoundingClientRect();
+    let xPx = (e.clientX - r.left) - mod(mapX, ww);
+    xPx = ((xPx % ww) + ww) % ww;
+    const x = xPx / ww;
+    const y = (e.clientY - r.top) / r.height;
+    if (x < 0 || x > 1 || y < 0 || y > 1) { cursorLatLon.textContent = '—'; return; }
+    const lon = (x * 360 - 180).toFixed(2);
+    const latRad = (0.5 - y) * Math.PI;
+    const lat = ((180 / Math.PI) * Math.atan(Math.sinh(latRad))).toFixed(2);
+    cursorLatLon.textContent = lat + "," + lon;
+});
+mapZoomWrap.addEventListener("mouseleave", ()=> cursorLatLon.textContent = "—");
+</script>
+</body>
+</html>
