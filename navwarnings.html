@@ -75,7 +75,7 @@
         <div style="margin-top:18px" id="nav-list">
           <div style="display:flex;align-items:center;justify-content:space-between">
             <h3 style="margin:0">NAVAREA Regions</h3>
-            <div style="color:var(--muted);font-size:13px">Updated: <strong>25-11-2025 21:34 UTC</strong></div>
+            <div style="color:var(--muted);font-size:13px">Updated: <strong>27-11-2025 16:34 UTC</strong></div>
           </div>
 
           <div class="grid-cards" id="cards">
@@ -128,23 +128,23 @@
   <script>
     // Sample NAVAREA data
     const NAVAREAS = [
-      {region:'NAVAREA I', country:'United Kingdom', file:'navarea1.pdf', last:'25-11-2025 21:34 UTC', official:'https://msi.admiralty.co.uk'},
-      {region:'NAVAREA II', country:'France', file:'navarea2.pdf', last:'25-11-2025 21:34 UTC', official:'https://portail.ping-info-nautique.fr'},
-      {region:'NAVAREA III', country:'Spain', file:'navarea3.pdf', last:'25-11-2025 21:34 UTC', official:'https://armada.defensa.gob.es'},
-      {region:'NAVAREA IV', country:'United States', file:'navarea4.pdf', last:'25-11-2025 21:34 UTC', official:'https://msi.nga.mil'},
-      {region:'NAVAREA V', country:'Brazil', file:'navarea5.pdf', last:'25-11-2025 21:34 UTC', official:'https://www.marinha.mil.br'},
-      {region:'NAVAREA VII', country:'South Africa', file:'navarea7.pdf', last:'25-11-2025 21:34 UTC', official:'http://www.sanho.co.za'},
-      {region:'NAVAREA VIII', country:'India', file:'navarea8.pdf', last:'25-11-2025 21:34 UTC', official:'https://hydrobharat.gov.in'},
-      {region:'NAVAREA IX', country:'Pakistan', file:'navarea9.pdf', last:'25-11-2025 21:34 UTC', official:'https://hydrography.paknavy.gov.pk'},
-      {region:'NAVAREA X', country:'Australia', file:'navarea10.pdf', last:'25-11-2025 21:34 UTC', official:'https://www.operations.amsa.gov.au'},
-      {region:'NAVAREA XI', country:'Japan', file:'navarea11.pdf', last:'25-11-2025 21:34 UTC', official:'https://www1.kaiho.mlit.go.jp'},
-      {region:'NAVAREA XII', country:'United States', file:'navarea12.pdf', last:'25-11-2025 21:34 UTC', official:'https://msi.nga.mil'},
-      {region:'NAVAREA XIV', country:'New Zealand', file:'navarea14.pdf', last:'25-11-2025 21:34 UTC', official:'https://www.maritimenz.govt.nz'},
-      {region:'NAVAREA XV', country:'Chile', file:'navarea15.pdf', last:'25-11-2025 21:34 UTC', official:'http://www.shoa.cl'},
-      {region:'NAVAREA XVI', country:'Peru', file:'navarea16.pdf', last:'25-11-2025 21:34 UTC', official:'https://www.dhn.mil.pe'},
-      {region:'NAVAREA XVII', country:'Canada', file:'navarea17.pdf', last:'25-11-2025 21:34 UTC', official:'https://nis.ccg-gcc.gc.ca'},
-      {region:'NAVAREA XVIII', country:'Canada', file:'navarea18.pdf', last:'25-11-2025 21:34 UTC', official:'https://nis.ccg-gcc.gc.ca'},
-      {region:'NAVAREA XIX', country:'Norway', file:'navarea19.pdf', last:'25-11-2025 21:34 UTC', official:'https://kyvreports.kystverket.no'}
+      {region:'NAVAREA I', country:'United Kingdom', file:'navarea1.pdf', last:'27-11-2025 16:34 UTC', official:'https://msi.admiralty.co.uk'},
+      {region:'NAVAREA II', country:'France', file:'navarea2.pdf', last:'27-11-2025 16:34 UTC', official:'https://portail.ping-info-nautique.fr'},
+      {region:'NAVAREA III', country:'Spain', file:'navarea3.pdf', last:'27-11-2025 16:34 UTC', official:'https://armada.defensa.gob.es'},
+      {region:'NAVAREA IV', country:'United States', file:'navarea4.pdf', last:'27-11-2025 16:34 UTC', official:'https://msi.nga.mil'},
+      {region:'NAVAREA V', country:'Brazil', file:'navarea5.pdf', last:'27-11-2025 16:34 UTC', official:'https://www.marinha.mil.br'},
+      {region:'NAVAREA VII', country:'South Africa', file:'navarea7.pdf', last:'27-11-2025 16:34 UTC', official:'http://www.sanho.co.za'},
+      {region:'NAVAREA VIII', country:'India', file:'navarea8.pdf', last:'27-11-2025 16:34 UTC', official:'https://hydrobharat.gov.in'},
+      {region:'NAVAREA IX', country:'Pakistan', file:'navarea9.pdf', last:'27-11-2025 16:34 UTC', official:'https://hydrography.paknavy.gov.pk'},
+      {region:'NAVAREA X', country:'Australia', file:'navarea10.pdf', last:'27-11-2025 16:34 UTC', official:'https://www.operations.amsa.gov.au'},
+      {region:'NAVAREA XI', country:'Japan', file:'navarea11.pdf', last:'27-11-2025 16:34 UTC', official:'https://www1.kaiho.mlit.go.jp'},
+      {region:'NAVAREA XII', country:'United States', file:'navarea12.pdf', last:'27-11-2025 16:34 UTC', official:'https://msi.nga.mil'},
+      {region:'NAVAREA XIV', country:'New Zealand', file:'navarea14.pdf', last:'27-11-2025 16:34 UTC', official:'https://www.maritimenz.govt.nz'},
+      {region:'NAVAREA XV', country:'Chile', file:'navarea15.pdf', last:'27-11-2025 16:34 UTC', official:'http://www.shoa.cl'},
+      {region:'NAVAREA XVI', country:'Peru', file:'navarea16.pdf', last:'27-11-2025 16:34 UTC', official:'https://www.dhn.mil.pe'},
+      {region:'NAVAREA XVII', country:'Canada', file:'navarea17.pdf', last:'27-11-2025 16:34 UTC', official:'https://nis.ccg-gcc.gc.ca'},
+      {region:'NAVAREA XVIII', country:'Canada', file:'navarea18.pdf', last:'27-11-2025 16:34 UTC', official:'https://nis.ccg-gcc.gc.ca'},
+      {region:'NAVAREA XIX', country:'Norway', file:'navarea19.pdf', last:'27-11-2025 16:34 UTC', official:'https://kyvreports.kystverket.no'}
     ];
 
     const cardsEl = document.getElementById('cards');
@@ -195,3 +195,4 @@
   </script>
 </body>
 </html>
+
