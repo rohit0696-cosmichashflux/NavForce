@@ -103,6 +103,41 @@
     }
     .osm-attrib a { color:#a5d8ff; text-decoration:none; }
 
+    /* Elongated, high-visibility direction arrow */
+    .wave-dir-arrow {
+      display:inline-block;
+      width:18px;
+      height:18px;
+      border-radius:50%;
+      border:1px solid #4b5563;
+      margin-left:4px;
+      position:relative;
+      box-sizing:border-box;
+    }
+    .wave-dir-arrow::before {
+      content:"";
+      position:absolute;
+      top:3px;
+      left:50%;
+      width:2px;
+      height:10px;
+      margin-left:-1px;
+      background:#22cafe;  /* bright cyan shaft */
+      border-radius:999px;
+    }
+    .wave-dir-arrow::after {
+      content:"";
+      position:absolute;
+      top:1px;
+      left:50%;
+      width:0;
+      height:0;
+      margin-left:-4px;
+      border-left:4px solid transparent;
+      border-right:4px solid transparent;
+      border-bottom:7px solid #22cafe; /* bright cyan head */
+    }
+
     @media (max-width:600px){
       .top-bar{font-size:0.78rem;padding:4px;gap:4px;}
       #placeInput{min-width:100px;max-width:130px;}
@@ -450,7 +485,6 @@
       routeToggleMobile.textContent=collapsed?"Expand":"Collapse";
     });
 
-    // UPDATED: now returns heights + directions
     function getMarineAtTime(targetTimeMs){
       if(!lastMarineForecast || !lastMarineForecast.hourly ||
          !Array.isArray(lastMarineForecast.hourly.time))
@@ -542,12 +576,23 @@
       }
       let waveHtml="";
       if(hasWaves){
+        const totalDegNum = totalDir !== "-" ? parseInt(totalDir) : null;
+        const swellDegNum = swellDir !== "-" ? parseInt(swellDir) : null;
+        const windWaveDegNum = windWaveDir !== "-" ? parseInt(windWaveDir) : null;
+
+        const totalArrow = totalDegNum != null
+          ? `<span class="wave-dir-arrow" style="transform:rotate(${totalDegNum}deg);"></span>` : "";
+        const swellArrow = swellDegNum != null
+          ? `<span class="wave-dir-arrow" style="transform:rotate(${swellDegNum}deg);"></span>` : "";
+        const windWaveArrow = windWaveDegNum != null
+          ? `<span class="wave-dir-arrow" style="transform:rotate(${windWaveDegNum}deg);"></span>` : "";
+
         waveHtml=`
           <hr style="border:none;border-top:1px solid #0003;margin:6px 0;">
           <div style="font-weight:bold;margin-bottom:3px;">Wave snapshot</div>
-          <div>Total waves: <b>${totalWave}</b> (dir <b>${totalDir}</b>)</div>
-          <div>Swell height: <b>${swellWave}</b> (dir <b>${swellDir}</b>)</div>
-          <div>Wind wave height: <b>${windWave}</b> (dir <b>${windWaveDir}</b>)</div>`;
+          <div>Total waves: <b>${totalWave}</b> (dir <b>${totalDir}</b>${totalArrow})</div>
+          <div>Swell height: <b>${swellWave}</b> (dir <b>${swellDir}</b>${swellArrow})</div>
+          <div>Wind wave height: <b>${windWave}</b> (dir <b>${windWaveDir}</b>${windWaveArrow})</div>`;
       }
 
       panelContent.innerHTML=`
@@ -738,8 +783,18 @@
           <td>${desc}</td>
           <td>${swell}</td>
           <td>${windWave}</td>
-          <td>${swellDirText}</td>
-          <td>${windWaveDirText}</td>
+          <td>
+            ${swellDirText}
+            ${swellDirText
+              ? `<span class="wave-dir-arrow" style="transform:rotate(${parseInt(swellDirText)}deg);"></span>`
+              : ""}
+          </td>
+          <td>
+            ${windWaveDirText}
+            ${windWaveDirText
+              ? `<span class="wave-dir-arrow" style="transform:rotate(${parseInt(windWaveDirText)}deg);"></span>`
+              : ""}
+          </td>
           <td>${curSpeedText}</td>
           <td>${curDirText}</td>`;
         routeTableBody.appendChild(tr);
