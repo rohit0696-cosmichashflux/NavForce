@@ -546,6 +546,16 @@
       const hum=data?.main?.humidity!==undefined?data.main.humidity+" %":"-";
       const pres=data?.main?.pressure!==undefined?data.main.pressure+" mb":"-";
 
+      const windDeg = data?.wind?.deg;
+      let windDirText = "-";
+      let windArrowHtml = "";
+      if (typeof windDeg === "number") {
+        const wd = Math.round(windDeg);
+        windDirText = wd + "°";
+        windArrowHtml =
+          `<span class="wave-dir-arrow" style="transform:rotate(${wd}deg);"></span>`;
+      }
+
       let coordsInfo="";
       if(lat!==undefined && lon!==undefined)
         coordsInfo=`<div style="font-size:.82em;opacity:.78;">${lat.toFixed(4)}, ${lon.toFixed(4)}</div>`;
@@ -600,7 +610,7 @@
         <div>${desc}</div>
         <div>Temp: <b>${temp}</b></div>
         <div>Humidity: <b>${hum}</b></div>
-        <div>Wind: <b>${wind}</b></div>
+        <div>Wind: <b>${wind}</b> (dir <b>${windDirText}</b>${windArrowHtml})</div>
         <div>Pressure: <b>${pres}</b></div>
         ${waveHtml}`;
       weatherPanel.classList.add("active");
@@ -730,6 +740,7 @@
         let temp="",wind="",pres="",hum="",desc="",swell="",windWave="";
         let curSpeedText="",curDirText="";
         let swellDirText="", windWaveDirText="";
+        let windDirText="", windArrowHtml="";
 
         if(fcEntry){
           if(fcEntry.main){
@@ -740,6 +751,13 @@
           if(fcEntry.wind?.speed!==undefined){
             const wms=fcEntry.wind.speed, wkn=wms*1.943844;
             wind=wkn.toFixed(1)+" kt";
+          }
+          if(typeof fcEntry.wind?.deg === "number"){
+            const d = Math.round(fcEntry.wind.deg);
+            windDirText = d + "°";
+            windArrowHtml =
+              `<span class="wave-dir-arrow" style="transform:rotate(${d}deg);"></span>`;
+            curDirText = windDirText;
           }
           if(fcEntry.weather && fcEntry.weather[0]) desc=fcEntry.weather[0].description||"";
         }
@@ -777,7 +795,11 @@
           <td><input class="wp-speed-input" data-index="${i}" value="${legSpeed.toFixed(1)}" style="width:70px;"></td>
           <td>${etaStr}</td>
           <td>${temp}</td>
-          <td>${wind}</td>
+          <td>
+            ${wind}
+            ${windDirText ? ` (dir ${windDirText})` : ""}
+            ${windArrowHtml || ""}
+          </td>
           <td>${pres}</td>
           <td>${hum}</td>
           <td>${desc}</td>
