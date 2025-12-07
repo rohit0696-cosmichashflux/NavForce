@@ -136,7 +136,6 @@
         <option value="N">N</option>
         <option value="S">S</option>
       </select>
-
       <input type="number" id="lonDegTop"  placeholder="Lon°"  style="width:58px;font-size:0.8rem;">
       <input type="number" id="lonMinTop"  placeholder="'"     step="0.01" style="width:58px;font-size:0.8rem;">
       <select id="lonHemTop" style="width:46px;font-size:0.8rem;">
@@ -198,7 +197,7 @@
           <th>Leg dist (nm)</th>
           <th>Leg spd (kt)</th><th>ETA UTC</th>
           <th>Temp</th><th>Wind</th><th>Press</th><th>Hum</th><th>Weather</th>
-          <th>Swell</th><th>Wind wave</th>
+          <th>Swell</th><th>Wind wave</th><th>Swell dir</th><th>Wind wave dir</th>
           <th>Current spd</th><th>Current dir</th>
         </tr>
       </thead>
@@ -306,7 +305,6 @@
       lastMarker=L.marker([lat,lon]).addTo(map);
     }
 
-    // RL is default for new waypoints
     function addWaypoint(lat,lon){
       const m=L.marker([lat,lon]).addTo(map);
       markers.push({lat,lon,marker:m});
@@ -452,23 +450,42 @@
       routeToggleMobile.textContent=collapsed?"Expand":"Collapse";
     });
 
+    // UPDATED: now returns heights + directions
     function getMarineAtTime(targetTimeMs){
       if(!lastMarineForecast || !lastMarineForecast.hourly ||
          !Array.isArray(lastMarineForecast.hourly.time))
-        return {waveheight:null,swell_wave_height:null,wind_wave_height:null};
+        return {
+          waveheight:null,
+          swell_wave_height:null,
+          wind_wave_height:null,
+          wave_direction:null,
+          swell_wave_direction:null,
+          wind_wave_direction:null
+        };
       const times=lastMarineForecast.hourly.time;
       const h=lastMarineForecast.hourly;
       const wh=h.wave_height||[], swh=h.swell_wave_height||[], wwh=h.wind_wave_height||[];
+      const wd=h.wave_direction||[], swd=h.swell_wave_direction||[], wwd=h.wind_wave_direction||[];
       let bestIdx=-1,bestDiff=Infinity;
       for(let i=0;i<times.length;i++){
         const tMs=Date.parse(times[i]); const diff=Math.abs(tMs-targetTimeMs);
         if(diff<bestDiff){bestDiff=diff;bestIdx=i;}
       }
-      if(bestIdx===-1) return {waveheight:null,swell_wave_height:null,wind_wave_height:null};
+      if(bestIdx===-1) return {
+        waveheight:null,
+        swell_wave_height:null,
+        wind_wave_height:null,
+        wave_direction:null,
+        swell_wave_direction:null,
+        wind_wave_direction:null
+      };
       return {
         waveheight:wh[bestIdx]!=null?wh[bestIdx]:null,
         swell_wave_height:swh[bestIdx]!=null?swh[bestIdx]:null,
-        wind_wave_height:wwh[bestIdx]!=null?wwh[bestIdx]:null
+        wind_wave_height:wwh[bestIdx]!=null?wwh[bestIdx]:null,
+        wave_direction:wd[bestIdx]!=null?wd[bestIdx]:null,
+        swell_wave_direction:swd[bestIdx]!=null?swd[bestIdx]:null,
+        wind_wave_direction:wwd[bestIdx]!=null?wwd[bestIdx]:null
       };
     }
 
@@ -500,6 +517,8 @@
         coordsInfo=`<div style="font-size:.82em;opacity:.78;">${lat.toFixed(4)}, ${lon.toFixed(4)}</div>`;
 
       let totalWave="-",swellWave="-",windWave="-",hasWaves=false;
+      let totalDir="-", swellDir="-", windWaveDir="-";
+
       if(marine && marine.hourly){
         const h=marine.hourly;
         if(Array.isArray(h.wave_height) && h.wave_height[0]!=null){
@@ -511,15 +530,24 @@
         if(Array.isArray(h.wind_wave_height) && h.wind_wave_height[0]!=null){
           windWave=h.wind_wave_height[0].toFixed(1)+" m"; hasWaves=true;
         }
+        if(Array.isArray(h.wave_direction) && h.wave_direction[0]!=null){
+          totalDir=Math.round(h.wave_direction[0])+"°";
+        }
+        if(Array.isArray(h.swell_wave_direction) && h.swell_wave_direction[0]!=null){
+          swellDir=Math.round(h.swell_wave_direction[0])+"°";
+        }
+        if(Array.isArray(h.wind_wave_direction) && h.wind_wave_direction[0]!=null){
+          windWaveDir=Math.round(h.wind_wave_direction[0])+"°";
+        }
       }
       let waveHtml="";
       if(hasWaves){
         waveHtml=`
           <hr style="border:none;border-top:1px solid #0003;margin:6px 0;">
           <div style="font-weight:bold;margin-bottom:3px;">Wave snapshot</div>
-          <div>Total waves: <b>${totalWave}</b></div>
-          <div>Swell height: <b>${swellWave}</b></div>
-          <div>Wind wave height: <b>${windWave}</b></div>`;
+          <div>Total waves: <b>${totalWave}</b> (dir <b>${totalDir}</b>)</div>
+          <div>Swell height: <b>${swellWave}</b> (dir <b>${swellDir}</b>)</div>
+          <div>Wind wave height: <b>${windWave}</b> (dir <b>${windWaveDir}</b>)</div>`;
       }
 
       panelContent.innerHTML=`
@@ -656,6 +684,7 @@
         const fcEntry=getForecastAtTime(etaMs);
         let temp="",wind="",pres="",hum="",desc="",swell="",windWave="";
         let curSpeedText="",curDirText="";
+        let swellDirText="", windWaveDirText="";
 
         if(fcEntry){
           if(fcEntry.main){
@@ -681,6 +710,12 @@
           windWave=`${mv.toFixed(1)} m / ${ft.toFixed(1)} ft`;
           windWaveSum+=mv; windWaveCount++;
         }
+        if(marine?.swell_wave_direction!=null){
+          swellDirText = Math.round(marine.swell_wave_direction) + "°";
+        }
+        if(marine?.wind_wave_direction!=null){
+          windWaveDirText = Math.round(marine.wind_wave_direction) + "°";
+        }
 
         const tr=document.createElement("tr");
         tr.innerHTML=`
@@ -703,6 +738,8 @@
           <td>${desc}</td>
           <td>${swell}</td>
           <td>${windWave}</td>
+          <td>${swellDirText}</td>
+          <td>${windWaveDirText}</td>
           <td>${curSpeedText}</td>
           <td>${curDirText}</td>`;
         routeTableBody.appendChild(tr);
@@ -929,7 +966,7 @@
           `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apikey}&units=metric`;
         const marineUrl=
           `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}`+
-          `&hourly=wave_height,swell_wave_height,wind_wave_height&length=120&timezone=UTC`;
+          `&hourly=wave_height,swell_wave_height,wind_wave_height,wave_direction,swell_wave_direction,wind_wave_direction&length=120&timezone=UTC`;
 
         const [weatherRes,forecastRes,marineRes] = await Promise.all([
           fetch(weatherUrl),
