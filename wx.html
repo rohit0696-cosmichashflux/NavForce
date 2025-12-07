@@ -103,7 +103,6 @@
     }
     .osm-attrib a { color:#a5d8ff; text-decoration:none; }
 
-    /* Elongated, high-visibility direction arrow */
     .wave-dir-arrow {
       display:inline-block;
       width:18px;
@@ -122,7 +121,7 @@
       width:2px;
       height:10px;
       margin-left:-1px;
-      background:#22cafe;  /* bright cyan shaft */
+      background:#22cafe;
       border-radius:999px;
     }
     .wave-dir-arrow::after {
@@ -135,7 +134,7 @@
       margin-left:-4px;
       border-left:4px solid transparent;
       border-right:4px solid transparent;
-      border-bottom:7px solid #22cafe; /* bright cyan head */
+      border-bottom:7px solid #22cafe;
     }
 
     @media (max-width:600px){
@@ -229,6 +228,7 @@
         <tr>
           <th>#</th><th>Lat</th><th>Lon</th>
           <th>Track</th>
+          <th>Final crs</th>
           <th>Leg dist (nm)</th>
           <th>Leg spd (kt)</th><th>ETA UTC</th>
           <th>Temp</th><th>Wind</th><th>Press</th><th>Hum</th><th>Weather</th>
@@ -393,6 +393,30 @@
       return dist/1852;
     }
 
+    function gcCourseDeg(lat1, lon1, lat2, lon2) {
+      const φ1 = toRad(lat1);
+      const φ2 = toRad(lat2);
+      const Δλ = toRad(lon2 - lon1);
+      const y = Math.sin(Δλ) * Math.cos(φ2);
+      const x = Math.cos(φ1) * Math.sin(φ2) -
+                Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+      let brng = Math.atan2(y, x);
+      brng = (toDeg(brng) + 360) % 360;
+      return brng;
+    }
+
+    function rlCourseDeg(lat1, lon1, lat2, lon2) {
+      const φ1 = toRad(lat1);
+      const φ2 = toRad(lat2);
+      const Δλ = toRad(lon2 - lon1);
+      const Δψ = Math.log(Math.tan(φ2 / 2 + Math.PI / 4) /
+                          Math.tan(φ1 / 2 + Math.PI / 4));
+      const q = Math.abs(Δψ) > 1e-12 ? (φ2 - φ1) / Δψ : Math.cos(φ1);
+      let brng = Math.atan2(Δλ, Δψ || (φ2 - φ1));
+      brng = (toDeg(brng) + 360) % 360;
+      return brng;
+    }
+
     function unwrapLon(lon1, lon2){
       let d = lon2 - lon1;
       if (d > 180) lon2 -= 360;
@@ -448,7 +472,7 @@
       for (let i = 0; i < wp.length - 1; i++) {
         const a = wp[i];
         const b = wp[i + 1];
-        const track = legTrackTypes[i + 1] || "rl"; // leg between i -> i+1, default RL
+        const track = legTrackTypes[i + 1] || "rl";
 
         let pts;
         if (track === "gc") {
@@ -719,7 +743,7 @@
         }
 
         let legTrack = legTrackTypes[i];
-        if (!legTrack) { legTrack="rl"; legTrackTypes[i]="rl"; } // default RL
+        if (!legTrack) { legTrack="rl"; legTrackTypes[i]="rl"; }
 
         let legSpeed = legSpeeds[i];
         if (legSpeed == null || legSpeed <= 0) legSpeed = globalSpeed;
@@ -731,7 +755,7 @@
 
         const etaMs=depTime.getTime()+cumulativeHours*3600*1000;
         const eta=new Date(etaMs);
-        const etaStr=`${eta.getUTCDate().toString().padStart(2,"0")}.${
+        const etaStr=`${eta.getUTCDate().toString().padStart(2,"0")}.${ 
           (eta.getUTCMonth()+1).toString().padStart(2,"0")}.${eta.getFullYear()} ${
           eta.getUTCHours().toString().padStart(2,"0")}:${
           eta.getUTCMinutes().toString().padStart(2,"0")}Z`;
@@ -780,6 +804,16 @@
           windWaveDirText = Math.round(marine.wind_wave_direction) + "°";
         }
 
+        let finalCrsDeg = 0;
+        if (i > 0) {
+          const prev = markers[i - 1];
+          if (legTrack === "gc") {
+            finalCrsDeg = gcCourseDeg(prev.lat, prev.lon, m.lat, m.lon);
+          } else {
+            finalCrsDeg = rlCourseDeg(prev.lat, prev.lon, m.lat, m.lon);
+          }
+        }
+
         const tr=document.createElement("tr");
         tr.innerHTML=`
           <td>${i+1}</td>
@@ -791,6 +825,7 @@
               <option value="rl"${legTrack==="rl"?" selected":""}>RL</option>
             </select>
           </td>
+          <td>${i === 0 ? "" : finalCrsDeg.toFixed(0)}°</td>
           <td>${activeDist.toFixed(1)}</td>
           <td><input class="wp-speed-input" data-index="${i}" value="${legSpeed.toFixed(1)}" style="width:70px;"></td>
           <td>${etaStr}</td>
@@ -835,6 +870,7 @@
       totalRow.style.fontWeight="600";
       totalRow.innerHTML=`
         <td colspan="3" style="text-align:right;">Total dist</td>
+        <td></td>
         <td></td>
         <td>${compositeTotalNm.toFixed(1)}</td>
         <td>${avgSpeed ? avgSpeed.toFixed(1) + " kt avg" : "-"}</td>
