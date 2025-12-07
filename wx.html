@@ -20,8 +20,13 @@
           crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <style>
-    html, body { height:100%; width:100%; margin:0; padding:0;
-      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    html, body {
+      height:100%;
+      width:100%;
+      margin:0;
+      padding:0;
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
     body { background:#020617; color:#f9fafb; }
     #map { width:100vw; height:100vh; }
 
@@ -32,12 +37,19 @@
       background:linear-gradient(90deg,#111827 10%,#1f2937 60%,#312e81 100%);
       color:#f9fafb; font-size:0.9rem;
     }
-    .top-bar button,.top-bar input,.top-bar select {
+    .top-bar button,
+    .top-bar input,
+    .top-bar select {
       border-radius:7px; border:1px solid #4b5563;
       padding:5px 8px; font-size:0.9rem;
     }
-    .top-bar button { cursor:pointer; font-weight:600; background:#1f2937; color:#f9fafb; }
-    .top-bar input { background:#e5f4ff; color:#111827; }
+    .top-bar button {
+      cursor:pointer; font-weight:600;
+      background:#1f2937; color:#f9fafb;
+    }
+    .top-bar input {
+      background:#e5f4ff; color:#111827;
+    }
     #placeInput { min-width:120px; max-width:180px; }
     #cursorLatLon {
       font-family:monospace; padding:5px 8px; background:#e5f4ff; color:#111827;
@@ -83,19 +95,25 @@
     .forecast-item-time { font-size:0.75rem; opacity:.8; margin-bottom:2px; }
     .forecast-item-temp { font-weight:600; margin-bottom:1px; }
     .forecast-item-line { font-size:0.75rem; }
-    .forecast-item-icon { width:24px; height:24px; vertical-align:middle; margin-right:3px; }
+    .forecast-item-icon {
+      width:24px; height:24px; vertical-align:middle; margin-right:3px;
+    }
 
     .route-details {
       position:fixed; top:46px; left:0; width:100vw; max-height:110px;
       overflow:auto; z-index:850; background:rgba(15,23,42,.96); color:#f5f7ff;
       padding:4px 6px; box-sizing:border-box; display:none; font-size:0.8rem;
     }
-    .route-details table { width:100%; border-collapse:collapse; font-size:0.8rem; }
+    .route-details table {
+      width:100%; border-collapse:collapse; font-size:0.8rem;
+    }
     .route-details th,.route-details td {
       padding:3px 4px; border-bottom:1px solid #ffffff22;
       text-align:left; white-space:nowrap;
     }
-    .route-details th { position:sticky; top:0; background:#020617; z-index:1; }
+    .route-details th {
+      position:sticky; top:0; background:#020617; z-index:1;
+    }
 
     .osm-attrib {
       position:fixed; right:6px; bottom:28px; z-index:901;
@@ -234,7 +252,8 @@
           <th>Leg spd (kt)</th><th>ETA UTC</th>
           <th>Temp</th><th>Wind</th><th>Press</th><th>Hum</th><th>Weather</th>
           <th>Swell</th><th>Wind wave</th><th>Swell dir</th><th>Wind wave dir</th>
-          <th>Current spd</th><th>Current dir</th>
+          <th title="Standard ocean surface current speed">Current spd</th>
+          <th title="Standard ocean surface current direction">Current dir</th>
         </tr>
       </thead>
       <tbody id="routeTableBody"></tbody>
@@ -279,7 +298,7 @@
     let lastMarker = null;
     let markers = [];
     let legSpeeds = [];
-    let legTrackTypes = []; // "gc" or "rl" per waypoint
+    let legTrackTypes = [];
     let legLines = [];
 
     const weatherPanel = document.getElementById("weatherPanel");
@@ -295,7 +314,6 @@
     const placeInput = document.getElementById("placeInput");
     const placeGo = document.getElementById("placeGo");
     const cursorLatLon = document.getElementById("cursorLatLon");
-
     const enableWaypointsTop = document.getElementById("enableWaypointsTop");
     const routeDetailsDiv = document.getElementById("routeDetails");
     const vesselSpeedInput = document.getElementById("vesselSpeed");
@@ -328,6 +346,181 @@
       lon = ((lon + 180) % 360 + 360) % 360 - 180;
       return lon;
     }
+    function toRad(d){return d*Math.PI/180;}
+    function toDeg(r){return r*180/Math.PI;}
+
+    // --- Standard ocean surface currents (very coarse climatology) ---
+    const standardCurrents = [
+      // Atlantic
+      {
+        name: "North Equatorial Current (Atl)",
+        basin: "Atlantic",
+        speedKn: 0.6,
+        dirDeg: 270,
+        latMin: 5, latMax: 20,
+        lonMin: -60, lonMax: -15
+      },
+      {
+        name: "South Equatorial Current (Atl)",
+        basin: "Atlantic",
+        speedKn: 0.6,
+        dirDeg: 270,
+        latMin: -20, latMax: 0,
+        lonMin: -40, lonMax: 10
+      },
+      {
+        name: "Equatorial Countercurrent (Atl)",
+        basin: "Atlantic",
+        speedKn: 0.5,
+        dirDeg: 90,
+        latMin: -3, latMax: 5,
+        lonMin: -40, lonMax: 10
+      },
+      {
+        name: "Gulf Stream",
+        basin: "Atlantic",
+        speedKn: 1.5,
+        dirDeg: 45,
+        latMin: 25, latMax: 45,
+        lonMin: -80, lonMax: -40
+      },
+      {
+        name: "Canary Current",
+        basin: "Atlantic",
+        speedKn: 0.4,
+        dirDeg: 210,
+        latMin: 10, latMax: 35,
+        lonMin: -30, lonMax: -5
+      },
+      {
+        name: "Brazil Current",
+        basin: "Atlantic",
+        speedKn: 0.7,
+        dirDeg: 225,
+        latMin: -35, latMax: -15,
+        lonMin: -55, lonMax: -35
+      },
+      {
+        name: "Benguela Current",
+        basin: "Atlantic",
+        speedKn: 0.5,
+        dirDeg: 330,
+        latMin: -35, latMax: -10,
+        lonMin: -15, lonMax: 15
+      },
+
+      // Pacific
+      {
+        name: "North Equatorial Current (Pac)",
+        basin: "Pacific",
+        speedKn: 0.8,
+        dirDeg: 270,
+        latMin: 5, latMax: 18,
+        lonMin: 140, lonMax: -80
+      },
+      {
+        name: "South Equatorial Current (Pac)",
+        basin: "Pacific",
+        speedKn: 0.7,
+        dirDeg: 270,
+        latMin: -20, latMax: 0,
+        lonMin: 150, lonMax: -80
+      },
+      {
+        name: "Equatorial Countercurrent (Pac)",
+        basin: "Pacific",
+        speedKn: 0.6,
+        dirDeg: 90,
+        latMin: -3, latMax: 5,
+        lonMin: 150, lonMax: -80
+      },
+      {
+        name: "Kuroshio Current",
+        basin: "Pacific",
+        speedKn: 1.5,
+        dirDeg: 45,
+        latMin: 15, latMax: 35,
+        lonMin: 120, lonMax: 170
+      },
+      {
+        name: "California Current",
+        basin: "Pacific",
+        speedKn: 0.4,
+        dirDeg: 135,
+        latMin: 45, latMax: 20,
+        lonMin: -140, lonMax: -115
+      },
+      {
+        name: "East Australian Current",
+        basin: "Pacific",
+        speedKn: 0.8,
+        dirDeg: 225,
+        latMin: -15, latMax: -40,
+        lonMin: 145, lonMax: 170
+      },
+      {
+        name: "Humboldt (Peru) Current",
+        basin: "Pacific",
+        speedKn: 0.5,
+        dirDeg: 330,
+        latMin: -45, latMax: 0,
+        lonMin: -90, lonMax: -70
+      },
+
+      // Indian
+      {
+        name: "South Equatorial Current (Ind)",
+        basin: "Indian",
+        speedKn: 0.6,
+        dirDeg: 270,
+        latMin: -20, latMax: 0,
+        lonMin: 40, lonMax: 110
+      },
+      {
+        name: "Agulhas Current",
+        basin: "Indian",
+        speedKn: 1.5,
+        dirDeg: 225,
+        latMin: -35, latMax: -15,
+        lonMin: 32, lonMax: 45
+      },
+      {
+        name: "West Australian Current",
+        basin: "Indian",
+        speedKn: 0.4,
+        dirDeg: 315,
+        latMin: -40, latMax: -20,
+        lonMin: 110, lonMax: 125
+      }
+    ];
+
+    function normalizeLonStd(lon) {
+      let x = lon;
+      while (x < -180) x += 360;
+      while (x > 180) x -= 360;
+      return x;
+    }
+
+    function getStandardCurrentAt(lat, lon) {
+      const nLon = normalizeLonStd(lon);
+      let best = null;
+      for (const c of standardCurrents) {
+        const lonMin = normalizeLonStd(c.lonMin);
+        const lonMax = normalizeLonStd(c.lonMax);
+        let inLon;
+        if (lonMin <= lonMax) {
+          inLon = nLon >= lonMin && nLon <= lonMax;
+        } else {
+          inLon = nLon >= lonMin || nLon <= lonMax;
+        }
+        if (lat >= c.latMin && lat <= c.latMax && inLon) {
+          best = c;
+          break;
+        }
+      }
+      if (!best) return { name: "-", speedKn: null, dirDeg: null };
+      return { name: best.name, speedKn: best.speedKn, dirDeg: best.dirDeg };
+    }
 
     map.on("mousemove",e=>{
       const lat=e.latlng.lat.toFixed(2);
@@ -345,7 +538,7 @@
       const m=L.marker([lat,lon]).addTo(map);
       markers.push({lat,lon,marker:m});
       legSpeeds.push(null);
-      legTrackTypes.push("rl"); // default RL
+      legTrackTypes.push("rl");
       if(markers.length>50){
         const old=markers.shift();
         legSpeeds.shift();
@@ -362,9 +555,6 @@
       legLines=[];
       routeTableBody.innerHTML="";
     }
-
-    function toRad(d){return d*Math.PI/180;}
-    function toDeg(r){return r*180/Math.PI;}
 
     function gcDistanceNm(lat1, lon1, lat2, lon2){
       const R = 6371e3;
@@ -428,26 +618,21 @@
     function gcSegmentPoints(lat1, lon1, lat2, lon2, segments = 128) {
       const φ1 = toRad(lat1), λ1 = toRad(lon1);
       const φ2 = toRad(lat2), λ2 = toRad(lon2);
-
       const d = 2 * Math.asin(Math.sqrt(
         Math.sin((φ2 - φ1) / 2) ** 2 +
         Math.cos(φ1) * Math.cos(φ2) * Math.sin((λ2 - λ1) / 2) ** 2
       ));
       if (d === 0) return [[lat1, lon1]];
-
       const pts = [];
       for (let i = 0; i <= segments; i++) {
         const f = i / segments;
         const A = Math.sin((1 - f) * d) / Math.sin(d);
         const B = Math.sin(f * d) / Math.sin(d);
-
         const x = A * Math.cos(φ1) * Math.cos(λ1) + B * Math.cos(φ2) * Math.cos(λ2);
         const y = A * Math.cos(φ1) * Math.sin(λ1) + B * Math.cos(φ2) * Math.sin(λ2);
         const z = A * Math.sin(φ1) + B * Math.sin(φ2);
-
         const φi = Math.atan2(z, Math.sqrt(x * x + y * y));
         const λi = Math.atan2(y, x);
-
         pts.push([toDeg(φi), toDeg(λi)]);
       }
       return pts;
@@ -464,24 +649,20 @@
         legLines.push(line);
         return;
       }
-
       const wp = markers.map(p => ({ lat: p.lat, lon: p.lon }));
       for (let i = 1; i < wp.length; i++) {
         wp[i].lon = unwrapLon(wp[i - 1].lon, wp[i].lon);
       }
-
       for (let i = 0; i < wp.length - 1; i++) {
         const a = wp[i];
         const b = wp[i + 1];
         const track = legTrackTypes[i + 1] || "rl";
-
         let pts;
         if (track === "gc") {
           pts = gcSegmentPoints(a.lat, a.lon, b.lat, b.lon, 128);
         } else {
           pts = [[a.lat, a.lon], [b.lat, b.lon]];
         }
-
         const line = L.polyline(pts, {
           color: track === "gc" ? "#fbbf24" : "#38bdf8",
           weight: 3,
@@ -630,6 +811,20 @@
           <div>Wind wave height: <b>${windWave}</b> (dir <b>${windWaveDir}</b>${windWaveArrow})</div>`;
       }
 
+      // --- Standard surface current at clicked location ---
+      const stdCurrent = getStandardCurrentAt(lat, lon);
+      let currentHtml = "";
+      if (stdCurrent.speedKn != null && stdCurrent.dirDeg != null) {
+        const d = Math.round(stdCurrent.dirDeg);
+        const arrow =
+          `<span class="wave-dir-arrow" style="transform:rotate(${d}deg);"></span>`;
+        currentHtml =
+          `<hr style="border:none;border-top:1px solid #0003;margin:6px 0;">` +
+          `<div style="font-weight:bold;margin-bottom:3px;">Standard surface current</div>` +
+          `<div>${stdCurrent.name}</div>` +
+          `<div>Speed <b>${stdCurrent.speedKn.toFixed(1)} kn</b> dir <b>${d}°</b> ${arrow}</div>`;
+      }
+
       panelContent.innerHTML=`
         <b style="font-size:1.05em;">${icon}${name || "Lat/Lon"}${coordsInfo}</b>
         <div>${desc}</div>
@@ -637,7 +832,8 @@
         <div>Humidity: <b>${hum}</b></div>
         <div>Wind: <b>${wind}</b> (dir <b>${windDirText}</b>${windArrowHtml})</div>
         <div>Pressure: <b>${pres}</b></div>
-        ${waveHtml}`;
+        ${waveHtml}
+        ${currentHtml}`;
       weatherPanel.classList.add("active");
     }
 
@@ -651,7 +847,6 @@
       const list=lastForecastData.list;
       const baseStep=3;
       const indicesStep=Math.max(1,Math.round(stepHours/baseStep));
-
       for(let i=0;i<list.length;i+=indicesStep){
         const entry=list[i];
         const dtMs=entry.dt*1000, d=new Date(dtMs);
@@ -756,7 +951,7 @@
 
         const etaMs=depTime.getTime()+cumulativeHours*3600*1000;
         const eta=new Date(etaMs);
-        const etaStr=`${eta.getUTCDate().toString().padStart(2,"0")}.${ 
+        const etaStr=`${eta.getUTCDate().toString().padStart(2,"0")}.${
           (eta.getUTCMonth()+1).toString().padStart(2,"0")}.${eta.getFullYear()} ${
           eta.getUTCHours().toString().padStart(2,"0")}:${
           eta.getUTCMinutes().toString().padStart(2,"0")}Z`;
@@ -782,7 +977,6 @@
             windDirText = d + "°";
             windArrowHtml =
               `<span class="wave-dir-arrow" style="transform:rotate(${d}deg);"></span>`;
-            curDirText = windDirText;
           }
           if(fcEntry.weather && fcEntry.weather[0]) desc=fcEntry.weather[0].description||"";
         }
@@ -803,6 +997,13 @@
         }
         if(marine?.wind_wave_direction!=null){
           windWaveDirText = Math.round(marine.wind_wave_direction) + "°";
+        }
+
+        // --- Standard surface current at waypoint ---
+        const stdCur = getStandardCurrentAt(m.lat, m.lon);
+        if (stdCur.speedKn != null && stdCur.dirDeg != null) {
+          curSpeedText = stdCur.speedKn.toFixed(1) + " kn";
+          curDirText = Math.round(stdCur.dirDeg) + "°";
         }
 
         let finalCrsDeg = 0;
@@ -888,8 +1089,13 @@
     routeResetBtn.addEventListener("click",clearWaypoints);
     routeExpandBtn.addEventListener("click",()=>{
       consoleExpanded=!consoleExpanded;
-      if(consoleExpanded){ routeDetailsDiv.style.maxHeight="60vh"; routeExpandBtn.textContent="Collapse"; }
-      else{ routeDetailsDiv.style.maxHeight="110px"; routeExpandBtn.textContent="Expand"; }
+      if(consoleExpanded){
+        routeDetailsDiv.style.maxHeight="60vh";
+        routeExpandBtn.textContent="Collapse";
+      } else {
+        routeDetailsDiv.style.maxHeight="110px";
+        routeExpandBtn.textContent="Expand";
+      }
     });
 
     routeTableBody.addEventListener("change",e=>{
@@ -976,18 +1182,23 @@
         doc.setFontSize(9);
         doc.setFont(undefined, "normal");
         const now = new Date();
-        doc.text(`Generated: ${now.toUTCString()}`, 20, 28);
+        doc.text("Generated " + now.toUTCString(), 20, 28);
 
         const table = routeTableBody.closest("table");
-        const headCells = Array.from(table.querySelectorAll("thead tr th")).map(th =>
-          th.textContent.trim()
-        );
-
+        const headCells = Array.from(table.querySelectorAll("thead tr th"))
+          .map(th => th.textContent.trim());
         const bodyRows = [];
         Array.from(routeTableBody.querySelectorAll("tr")).forEach(tr => {
           const cells = Array.from(tr.children).map(td => {
             const input = td.querySelector("input,select");
-            return input ? (input.value || input.options?.[input.selectedIndex]?.text || "") : td.textContent.trim();
+            if (input) {
+              if (input.tagName === "SELECT") {
+                const sel = input;
+                return sel.options[sel.selectedIndex]?.text || sel.value || "";
+              }
+              return input.value;
+            }
+            return td.textContent.trim();
           });
           bodyRows.push(cells);
         });
@@ -997,23 +1208,15 @@
           body: bodyRows,
           startY: 35,
           theme: "grid",
-          styles: {
-            fontSize: 7,
-            cellPadding: 2,
-            textColor: [0, 0, 0],
-          },
-          headStyles: {
-            fillColor: [15, 23, 42],
-            textColor: [255, 255, 255],
-            fontStyle: "bold",
-          },
+          styles: { fontSize: 7, cellPadding: 2, textColor: [0,0,0] },
+          headStyles: { fillColor: [15,23,42], textColor: [255,255,255], fontStyle: "bold" },
           margin: { left: 10, right: 10 },
-          didDrawPage: function(data) {
+          didDrawPage: function (data) {
             const pageSize = doc.internal.pageSize;
             const pageHeight = pageSize.getHeight();
             doc.setFontSize(7);
             doc.text(
-              `Page ${data.pageNumber}`,
+              "Page " + data.pageNumber,
               pageSize.getWidth() / 2,
               pageHeight - 5,
               { align: "center" }
@@ -1024,63 +1227,62 @@
         doc.save("route-console.pdf");
       };
 
-      img.onerror = function() {
-        console.warn("Logo failed to load, exporting without watermark.");
+      img.onerror = function () {
         exportPdfWithoutWatermark();
       };
 
       img.src = "https://agi-prod-file-upload-public-main-use1.s3.amazonaws.com/d2cae29d-bcd6-4e50-afa8-5130c39b17b2";
-    });
 
-    function exportPdfWithoutWatermark() {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      function exportPdfWithoutWatermark() {
+        const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
 
-      doc.setFontSize(14);
-      doc.setFont(undefined, "bold");
-      doc.text("Route Console Report", 20, 20);
+        doc.setFontSize(14);
+        doc.setFont(undefined, "bold");
+        doc.text("Route Console Report", 20, 20);
 
-      doc.setFontSize(9);
-      doc.setFont(undefined, "normal");
-      const now = new Date();
-      doc.text(`Generated: ${now.toUTCString()}`, 20, 28);
+        doc.setFontSize(9);
+        doc.setFont(undefined, "normal");
+        const now = new Date();
+        doc.text("Generated " + now.toUTCString(), 20, 28);
 
-      const table = routeTableBody.closest("table");
-      const headCells = Array.from(table.querySelectorAll("thead tr th")).map(th =>
-        th.textContent.trim()
-      );
-
-      const bodyRows = [];
-      Array.from(routeTableBody.querySelectorAll("tr")).forEach(tr => {
-        const cells = Array.from(tr.children).map(td => {
-          const input = td.querySelector("input,select");
-          return input ? (input.value || input.options?.[input.selectedIndex]?.text || "") : td.textContent.trim();
+        const table = routeTableBody.closest("table");
+        const headCells = Array.from(table.querySelectorAll("thead tr th"))
+          .map(th => th.textContent.trim());
+        const bodyRows = [];
+        Array.from(routeTableBody.querySelectorAll("tr")).forEach(tr => {
+          const cells = Array.from(tr.children).map(td => {
+            const input = td.querySelector("input,select");
+            if (input) {
+              if (input.tagName === "SELECT") {
+                const sel = input;
+                return sel.options[sel.selectedIndex]?.text || sel.value || "";
+              }
+              return input.value;
+            }
+            return td.textContent.trim();
+          });
+          bodyRows.push(cells);
         });
-        bodyRows.push(cells);
-      });
 
-      doc.autoTable({
-        head: [headCells],
-        body: bodyRows,
-        startY: 35,
-        theme: "grid",
-        styles: { fontSize: 7, cellPadding: 2 },
-        headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255] },
-        margin: { left: 10, right: 10 },
-      });
+        doc.autoTable({
+          head: [headCells],
+          body: bodyRows,
+          startY: 35,
+          theme: "grid",
+          styles: { fontSize: 7, cellPadding: 2 },
+          headStyles: { fillColor: [15,23,42], textColor: [255,255,255] },
+          margin: { left: 10, right: 10 }
+        });
 
-      doc.save("route-console.pdf");
-    }
+        doc.save("route-console.pdf");
+      }
+    });
 
     async function fetchWeatherAndForecast(lat,lon){
       try{
-        const weatherUrl=
-          `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apikey}&units=metric`;
-        const forecastUrl=
-          `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apikey}&units=metric`;
-        const marineUrl=
-          `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}`+
-          `&hourly=wave_height,swell_wave_height,wind_wave_height,wave_direction,swell_wave_direction,wind_wave_direction&length=120&timezone=UTC`;
+        const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apikey}&units=metric`;
+        const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apikey}&units=metric`;
+        const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=wave_height,swell_wave_height,wind_wave_height,wave_direction,swell_wave_direction,wind_wave_direction&length=120&timezone=UTC`;
 
         const [weatherRes,forecastRes,marineRes] = await Promise.all([
           fetch(weatherUrl),
@@ -1088,9 +1290,9 @@
           fetch(marineUrl)
         ]);
 
-        const weatherData=await weatherRes.json();
-        lastForecastData=forecastRes.ok?await forecastRes.json():null;
-        lastMarineForecast=marineRes.ok?await marineRes.json():null;
+        const weatherData = await weatherRes.json();
+        lastForecastData = forecastRes.ok ? await forecastRes.json() : null;
+        lastMarineForecast = marineRes.ok ? await marineRes.json() : null;
 
         showWeatherPanel(weatherData,lat,lon,lastMarineForecast);
         renderForecastBar();
@@ -1101,18 +1303,25 @@
       }
     }
 
-    placeGo.onclick=handlePlaceSearch;
+    placeGo.onclick = handlePlaceSearch;
     placeInput.addEventListener("keypress",e=>{
-      if(e.key==="Enter"){ e.preventDefault(); handlePlaceSearch(); }
+      if(e.key==="Enter"){
+        e.preventDefault();
+        handlePlaceSearch();
+      }
     });
+
     async function handlePlaceSearch(){
-      const place=placeInput.value.trim(); if(!place) return;
+      const place=placeInput.value.trim();
+      if(!place) return;
       try{
-        const url=
-          `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(place)}`+
-          `&appid=${apikey}&units=metric`;
-        const res=await fetch(url); const data=await res.json();
-        if(!res.ok || !data.coord){ alert("Place not found or API error"); return; }
+        const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(place)}&appid=${apikey}&units=metric`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if(!res.ok || !data.coord){
+          alert("Place not found or API error");
+          return;
+        }
         const lat=data.coord.lat, lon=data.coord.lon;
         map.setView([lat,lon],4);
         if(enableWaypointsTop.checked) addWaypoint(lat,lon);
@@ -1139,8 +1348,8 @@
         return;
       }
 
-      let lat = latDeg + latMin / 60;
-      let lon = lonDeg + lonMin / 60;
+      let lat = latDeg + latMin/60;
+      let lon = lonDeg + lonMin/60;
       if (latHem === "S") lat = -lat;
       if (lonHem === "W") lon = -lon;
 
@@ -1152,4 +1361,3 @@
   </script>
 </body>
 </html>
-
