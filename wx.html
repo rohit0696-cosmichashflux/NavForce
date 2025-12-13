@@ -18,6 +18,9 @@
           crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.3/jspdf.plugin.autotable.min.js"
           crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
     html, body {
@@ -156,6 +159,111 @@
       border-bottom:7px solid #22cafe;
     }
 
+    
+    .route-analysis-panel {
+      position:fixed;
+      top:50%;
+      left:50%;
+      transform:translate(-50%, -50%);
+      width:90vw;
+      max-width:1200px;
+      height:80vh;
+      background:rgba(15,23,42,0.98);
+      border-radius:12px;
+      padding:20px;
+      z-index:1001;
+      display:none;
+      overflow:auto;
+      box-shadow:0 10px 30px rgba(0,0,0,0.5);
+      border:1px solid #4b5563;
+    }
+    
+    .route-analysis-panel.active {
+      display:block;
+    }
+    
+    .route-analysis-header {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:20px;
+      padding-bottom:10px;
+      border-bottom:1px solid #4b5563;
+    }
+    
+    .route-analysis-header h2 {
+      margin:0;
+      color:#f9fafb;
+      font-size:1.2rem;
+    }
+    
+    .close-analysis-btn {
+      background:#7f1d1d;
+      color:#fef2f2;
+      border:none;
+      border-radius:6px;
+      padding:6px 12px;
+      cursor:pointer;
+      font-size:0.9rem;
+    }
+    
+    .graph-container {
+      display:grid;
+      grid-template-columns:repeat(2, 1fr);
+      gap:15px;
+      margin-bottom:20px;
+    }
+    
+    .graph-card {
+      background:#1f2937;
+      border-radius:8px;
+      padding:15px;
+      border:1px solid #374151;
+    }
+    
+    .graph-title {
+      color:#f9fafb;
+      font-size:0.9rem;
+      margin-bottom:10px;
+      text-align:center;
+      font-weight:600;
+    }
+    
+    .graph-canvas {
+      width:100%;
+      height:200px;
+    }
+    
+    .analysis-controls {
+      display:flex;
+      gap:10px;
+      margin-bottom:15px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    
+    .analysis-controls label {
+      font-size:0.85rem;
+      color:#d1d5db;
+    }
+    
+    .analysis-controls select,
+    .analysis-controls input {
+      background:#374151;
+      color:#f9fafb;
+      border:1px solid #4b5563;
+      border-radius:6px;
+      padding:5px 10px;
+      font-size:0.85rem;
+    }
+    
+    .no-route-message {
+      text-align:center;
+      padding:40px;
+      color:#9ca3af;
+      font-size:1rem;
+    }
+
     @media (max-width:600px){
       .top-bar{font-size:0.78rem;padding:4px;gap:4px;}
       #placeInput{min-width:100px;max-width:130px;}
@@ -166,6 +274,16 @@
       #map{margin-top:150px;}
       body.route-collapsed .route-details{max-height:26px;overflow:hidden;}
       body.route-collapsed #map{margin-top:120px;}
+      
+      .route-analysis-panel {
+        width:95vw;
+        height:85vh;
+        padding:10px;
+      }
+      
+      .graph-container {
+        grid-template-columns:1fr;
+      }
     }
     @media (max-height:450px){
       .route-details{top:90px;max-height:38vh;padding:4px;}
@@ -210,6 +328,8 @@
     <button id="homeBtn" title="Home">🏠 Home</button>
     <button id="contactBtn" title="Contact">Contact</button>
     <button id="toggleForecastBtn">Show forecast</button>
+    
+    <button id="routeAnalysisBtn" title="Route Analysis" style="background:#1e40af;color:#fff;">Route Analysis</button>
   </div>
 
   <div class="route-details" id="routeDetails">
@@ -260,6 +380,70 @@
     </table>
   </div>
 
+  
+  <div class="route-analysis-panel" id="routeAnalysisPanel">
+    <div class="route-analysis-header">
+      <h2>Route Analysis (6-96 hours)</h2>
+      <button class="close-analysis-btn" id="closeAnalysisBtn">Close</button>
+    </div>
+    
+    <div class="analysis-controls">
+      <label>Analysis Period:
+        <select id="analysisPeriod">
+          <option value="6">6 hours</option>
+          <option value="12">12 hours</option>
+          <option value="24" selected>24 hours</option>
+          <option value="48">48 hours</option>
+          <option value="72">72 hours</option>
+          <option value="96">96 hours</option>
+        </select>
+      </label>
+      <label>Time Interval:
+        <select id="analysisInterval">
+          <option value="1">1 hour</option>
+          <option value="3" selected>3 hours</option>
+          <option value="6">6 hours</option>
+        </select>
+      </label>
+      <button id="refreshAnalysisBtn" style="padding:5px 10px;background:#1e40af;color:#fff;border:none;border-radius:6px;cursor:pointer;">
+        Refresh Analysis
+      </button>
+    </div>
+    
+    <div id="analysisContent">
+      <div class="no-route-message" id="noRouteMessage">
+        No route available for analysis. Please create a route with waypoints first.
+      </div>
+      
+      <div class="graph-container" id="graphContainer" style="display:none;">
+        <div class="graph-card">
+          <div class="graph-title">Wind Speed (knots)</div>
+          <canvas class="graph-canvas" id="windGraph"></canvas>
+        </div>
+        <div class="graph-card">
+          <div class="graph-title">Swell Height (m)</div>
+          <canvas class="graph-canvas" id="swellGraph"></canvas>
+        </div>
+        <div class="graph-card">
+          <div class="graph-title">Wind Wave Height (m)</div>
+          <canvas class="graph-canvas" id="windWaveGraph"></canvas>
+        </div>
+        <div class="graph-card">
+          <div class="graph-title">Pressure (mb)</div>
+          <canvas class="graph-canvas" id="pressureGraph"></canvas>
+        </div>
+        <div class="graph-card">
+          <div class="graph-title">Temperature (°C)</div>
+          <canvas class="graph-canvas" id="temperatureGraph"></canvas>
+        </div>
+        <div class="graph-card">
+          <div class="graph-title">Current Speed (knots)</div>
+          <canvas class="graph-canvas" id="currentGraph"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="weather-panel" id="weatherPanel">
     <button id="closePanel" aria-label="Close">&times;</button>
     <div id="panelContent"></div>
@@ -300,10 +484,24 @@
     let legSpeeds = [];
     let legTrackTypes = [];
     let legLines = [];
+    
+    
+    let analysisData = null;
+    let analysisCharts = {};
 
     const weatherPanel = document.getElementById("weatherPanel");
     const panelContent = document.getElementById("panelContent");
     const closePanel = document.getElementById("closePanel");
+    
+    
+    const routeAnalysisBtn = document.getElementById("routeAnalysisBtn");
+    const routeAnalysisPanel = document.getElementById("routeAnalysisPanel");
+    const closeAnalysisBtn = document.getElementById("closeAnalysisBtn");
+    const analysisPeriodSelect = document.getElementById("analysisPeriod");
+    const analysisIntervalSelect = document.getElementById("analysisInterval");
+    const refreshAnalysisBtn = document.getElementById("refreshAnalysisBtn");
+    const noRouteMessage = document.getElementById("noRouteMessage");
+    const graphContainer = document.getElementById("graphContainer");
 
     const forecastBar = document.getElementById("forecastBar");
     const forecastItems = document.getElementById("forecastItems");
@@ -337,6 +535,33 @@
       maxZoom:19,minZoom:1,attribution:"© OpenStreetMap contributors"
     }).addTo(map);
 
+    
+    const now = new Date();
+    const utcString = now.toISOString().slice(0, 16);
+    departureUtcInput.value = utcString;
+
+    
+    routeAnalysisBtn.onclick = () => {
+      if (markers.length < 2) {
+        alert("Please create a route with at least 2 waypoints to analyze.");
+        return;
+      }
+      performRouteAnalysis();
+      routeAnalysisPanel.classList.add("active");
+    };
+    
+    closeAnalysisBtn.onclick = () => {
+      routeAnalysisPanel.classList.remove("active");
+    };
+    
+    refreshAnalysisBtn.onclick = () => {
+      if (markers.length < 2) {
+        alert("Please create a route with at least 2 waypoints to analyze.");
+        return;
+      }
+      performRouteAnalysis();
+    };
+
     homeBtn.onclick = () => { window.location.href = "index.html"; };
     contactBtn.onclick = () => { window.location.href = "contact.html"; };
     zoomInBtn.onclick = () => map.zoomIn();
@@ -349,9 +574,9 @@
     function toRad(d){return d*Math.PI/180;}
     function toDeg(r){return r*180/Math.PI;}
 
-    // --- Standard ocean surface currents (very coarse climatology) ---
+    
     const standardCurrents = [
-      // Atlantic
+      
       {
         name: "North Equatorial Current (Atl)",
         basin: "Atlantic",
@@ -964,6 +1189,11 @@
       legLines.forEach(l=>map.removeLayer(l));
       legLines=[];
       routeTableBody.innerHTML="";
+     
+      analysisData = null;
+      if (routeAnalysisPanel.classList.contains("active")) {
+        routeAnalysisPanel.classList.remove("active");
+      }
     }
 
     function gcDistanceNm(lat1, lon1, lat2, lon2){
@@ -1149,6 +1379,70 @@
       return best;
     }
 
+    
+    async function fetchWeatherForPositionAndTime(lat, lon, targetTimeMs) {
+      try {
+        
+        const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apikey}&units=metric`;
+        const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=wave_height,swell_wave_height,wind_wave_height,wave_direction,swell_wave_direction,wind_wave_direction&length=120&timezone=UTC`;
+        
+        const [forecastRes, marineRes] = await Promise.all([
+          fetch(forecastUrl),
+          fetch(marineUrl)
+        ]);
+        
+        const forecastData = forecastRes.ok ? await forecastRes.json() : null;
+        const marineData = marineRes.ok ? await marineRes.json() : null;
+        
+        
+        let closestForecast = null;
+        if (forecastData && Array.isArray(forecastData.list)) {
+          let bestDiff = Infinity;
+          for (const entry of forecastData.list) {
+            const tMs = entry.dt * 1000;
+            const diff = Math.abs(tMs - targetTimeMs);
+            if (diff < bestDiff) {
+              bestDiff = diff;
+              closestForecast = entry;
+            }
+          }
+        }
+        
+        
+        let closestMarine = null;
+        if (marineData && marineData.hourly && Array.isArray(marineData.hourly.time)) {
+          let bestDiff = Infinity;
+          const times = marineData.hourly.time;
+          for (let i = 0; i < times.length; i++) {
+            const tMs = Date.parse(times[i]);
+            const diff = Math.abs(tMs - targetTimeMs);
+            if (diff < bestDiff) {
+              bestDiff = diff;
+              closestMarine = {
+                swell_wave_height: marineData.hourly.swell_wave_height?.[i],
+                wind_wave_height: marineData.hourly.wind_wave_height?.[i],
+                swell_wave_direction: marineData.hourly.swell_wave_direction?.[i],
+                wind_wave_direction: marineData.hourly.wind_wave_direction?.[i]
+              };
+            }
+          }
+        }
+        
+        
+        const stdCurrent = getStandardCurrentAt(lat, lon);
+        
+        return {
+          forecast: closestForecast,
+          marine: closestMarine,
+          current: stdCurrent
+        };
+        
+      } catch (error) {
+        console.error("Error fetching weather for position:", error);
+        return null;
+      }
+    }
+
     function showWeatherPanel(data,lat,lon,marine){
       const name=data && data.name;
       const weather=data && data.weather && data.weather[0];
@@ -1221,7 +1515,7 @@
           <div>Wind wave height: <b>${windWave}</b> (dir <b>${windWaveDir}</b>${windWaveArrow})</div>`;
       }
 
-      // --- Standard surface current at clicked location ---
+      
       const stdCurrent = getStandardCurrentAt(lat, lon);
       let currentHtml = "";
       if (stdCurrent.speedKn != null && stdCurrent.dirDeg != null) {
@@ -1328,11 +1622,11 @@
     toggleForecastBtn.onclick=toggleForecast;
     hideForecastBtn.onclick=toggleForecast;
 
-    function updateRouteTable(){
+    async function updateRouteTable(){
       routeTableBody.innerHTML="";
-      if(!markers.length || !lastForecastData || !Array.isArray(lastForecastData.list)) return;
+      if(!markers.length) return;
 
-      const globalSpeed=parseFloat(vesselSpeedInput.value)||0;
+      const globalSpeed=parseFloat(vesselSpeedInput.value)||12;
       const depStr=departureUtcInput.value;
       if(!globalSpeed || !depStr) return;
 
@@ -1340,7 +1634,8 @@
       let cumulativeHours=0, compositeTotalNm=0;
       let swellSum=0,swellCount=0,windWaveSum=0,windWaveCount=0;
 
-      markers.forEach((m,i)=>{
+      for (let i = 0; i < markers.length; i++) {
+        const m = markers[i];
         let distGc=0, distRl=0;
         if(i>0){
           const prev=markers[i-1];
@@ -1366,13 +1661,22 @@
           eta.getUTCHours().toString().padStart(2,"0")}:${
           eta.getUTCMinutes().toString().padStart(2,"0")}Z`;
 
-        const fcEntry=getForecastAtTime(etaMs);
-        let temp="",wind="",pres="",hum="",desc="",swell="",windWave="";
-        let curSpeedText="",curDirText="";
-        let swellDirText="", windWaveDirText="";
-        let windDirText="", windArrowHtml="";
+        
+        let weatherData = null;
+        try {
+          weatherData = await fetchWeatherForPositionAndTime(m.lat, m.lon, etaMs);
+        } catch (err) {
+          console.error("Error fetching weather for waypoint:", err);
+        }
 
-        if(fcEntry){
+        let temp="-", wind="-", pres="-", hum="-", desc="-", swell="-", windWave="-";
+        let curSpeedText="-", curDirText="-";
+        let swellDirText="-", windWaveDirText="-";
+        let windDirText="-", windArrowHtml="";
+
+        if (weatherData && weatherData.forecast) {
+          const fcEntry = weatherData.forecast;
+          
           if(fcEntry.main){
             if(fcEntry.main.temp!==undefined) temp=Math.round(fcEntry.main.temp)+" °C";
             if(fcEntry.main.humidity!==undefined) hum=fcEntry.main.humidity+" %";
@@ -1388,28 +1692,31 @@
             windArrowHtml =
               `<span class="wave-dir-arrow" style="transform:rotate(${d}deg);"></span>`;
           }
-          if(fcEntry.weather && fcEntry.weather[0]) desc=fcEntry.weather[0].description||"";
+          if(fcEntry.weather && fcEntry.weather[0]) desc=fcEntry.weather[0].description||"-";
         }
 
-        const marine=getMarineAtTime(etaMs);
-        if(marine?.swell_wave_height!=null){
-          const mv=marine.swell_wave_height, ft=mv*3.28084;
-          swell=`${mv.toFixed(1)} m / ${ft.toFixed(1)} ft`;
-          swellSum+=mv; swellCount++;
-        }
-        if(marine?.wind_wave_height!=null){
-          const mv=marine.wind_wave_height, ft=mv*3.28084;
-          windWave=`${mv.toFixed(1)} m / ${ft.toFixed(1)} ft`;
-          windWaveSum+=mv; windWaveCount++;
-        }
-        if(marine?.swell_wave_direction!=null){
-          swellDirText = Math.round(marine.swell_wave_direction) + "°";
-        }
-        if(marine?.wind_wave_direction!=null){
-          windWaveDirText = Math.round(marine.wind_wave_direction) + "°";
+        if (weatherData && weatherData.marine) {
+          const marine = weatherData.marine;
+          
+          if(marine?.swell_wave_height != null){
+            const mv=marine.swell_wave_height, ft=mv*3.28084;
+            swell=`${mv.toFixed(1)} m / ${ft.toFixed(1)} ft`;
+            swellSum+=mv; swellCount++;
+          }
+          if(marine?.wind_wave_height != null){
+            const mv=marine.wind_wave_height, ft=mv*3.28084;
+            windWave=`${mv.toFixed(1)} m / ${ft.toFixed(1)} ft`;
+            windWaveSum+=mv; windWaveCount++;
+          }
+          if(marine?.swell_wave_direction != null){
+            swellDirText = Math.round(marine.swell_wave_direction) + "°";
+          }
+          if(marine?.wind_wave_direction != null){
+            windWaveDirText = Math.round(marine.wind_wave_direction) + "°";
+          }
         }
 
-        // --- Standard surface current at waypoint ---
+        
         const stdCur = getStandardCurrentAt(m.lat, m.lon);
         if (stdCur.speedKn != null && stdCur.dirDeg != null) {
           curSpeedText = stdCur.speedKn.toFixed(1) + " kn";
@@ -1444,7 +1751,7 @@
           <td>${temp}</td>
           <td>
             ${wind}
-            ${windDirText ? ` (dir ${windDirText})` : ""}
+            ${windDirText !== "-" ? ` (dir ${windDirText})` : ""}
             ${windArrowHtml || ""}
           </td>
           <td>${pres}</td>
@@ -1454,20 +1761,20 @@
           <td>${windWave}</td>
           <td>
             ${swellDirText}
-            ${swellDirText
+            ${swellDirText !== "-"
               ? `<span class="wave-dir-arrow" style="transform:rotate(${parseInt(swellDirText)}deg);"></span>`
               : ""}
           </td>
           <td>
             ${windWaveDirText}
-            ${windWaveDirText
+            ${windWaveDirText !== "-"
               ? `<span class="wave-dir-arrow" style="transform:rotate(${parseInt(windWaveDirText)}deg);"></span>`
               : ""}
           </td>
           <td>${curSpeedText}</td>
           <td>${curDirText}</td>`;
         routeTableBody.appendChild(tr);
-      });
+      }
 
       const avgSwellM=swellCount?swellSum/swellCount:0;
       const avgWindWaveM=windWaveCount?windWaveSum/windWaveCount:0;
@@ -1687,6 +1994,396 @@
         doc.save("route-console.pdf");
       }
     });
+
+    
+    async function performRouteAnalysis() {
+      if (markers.length < 2) {
+        noRouteMessage.style.display = "block";
+        graphContainer.style.display = "none";
+        return;
+      }
+      
+      
+      noRouteMessage.innerHTML = "<div>Analyzing route data...</div>";
+      noRouteMessage.style.display = "block";
+      graphContainer.style.display = "none";
+      
+      const analysisPeriod = parseInt(analysisPeriodSelect.value, 10);
+      const analysisInterval = parseInt(analysisIntervalSelect.value, 10);
+      
+      
+      const globalSpeed = parseFloat(vesselSpeedInput.value) || 12;
+      const depStr = departureUtcInput.value;
+      const depTime = new Date(depStr + "Z");
+      
+      
+      let totalHours = 0;
+      for (let i = 1; i < markers.length; i++) {
+        const prev = markers[i-1];
+        const curr = markers[i];
+        const legTrack = legTrackTypes[i] || "rl";
+        const legSpeed = legSpeeds[i] || globalSpeed;
+        
+        let dist = 0;
+        if (legTrack === "gc") {
+          dist = gcDistanceNm(prev.lat, prev.lon, curr.lat, curr.lon);
+        } else {
+          dist = rlDistanceNm(prev.lat, prev.lon, curr.lat, curr.lon);
+        }
+        
+        totalHours += dist / legSpeed;
+      }
+      
+      
+      const maxAnalysisHours = Math.min(analysisPeriod, totalHours, 120); 
+      
+      
+      const timePoints = [];
+      const positions = [];
+      
+      for (let hour = 0; hour <= maxAnalysisHours; hour += analysisInterval) {
+        timePoints.push(hour);
+        
+        
+        let remainingHours = hour;
+        let position = null;
+        
+        for (let i = 1; i < markers.length && remainingHours > 0; i++) {
+          const prev = markers[i-1];
+          const curr = markers[i];
+          const legTrack = legTrackTypes[i] || "rl";
+          const legSpeed = legSpeeds[i] || globalSpeed;
+          
+          let dist = 0;
+          if (legTrack === "gc") {
+            dist = gcDistanceNm(prev.lat, prev.lon, curr.lat, curr.lon);
+          } else {
+            dist = rlDistanceNm(prev.lat, prev.lon, curr.lat, curr.lon);
+          }
+          
+          const legHours = dist / legSpeed;
+          
+          if (remainingHours <= legHours) {
+            // Interpolate position along this leg
+            const fraction = remainingHours / legHours;
+            
+            if (legTrack === "gc") {
+              // Great circle interpolation
+              const φ1 = toRad(prev.lat), λ1 = toRad(prev.lon);
+              const φ2 = toRad(curr.lat), λ2 = toRad(curr.lon);
+              
+              const d = 2 * Math.asin(Math.sqrt(
+                Math.sin((φ2 - φ1) / 2) ** 2 +
+                Math.cos(φ1) * Math.cos(φ2) * Math.sin((λ2 - λ1) / 2) ** 2
+              ));
+              
+              const A = Math.sin((1 - fraction) * d) / Math.sin(d);
+              const B = Math.sin(fraction * d) / Math.sin(d);
+              const x = A * Math.cos(φ1) * Math.cos(λ1) + B * Math.cos(φ2) * Math.cos(λ2);
+              const y = A * Math.cos(φ1) * Math.sin(λ1) + B * Math.cos(φ2) * Math.sin(λ2);
+              const z = A * Math.sin(φ1) + B * Math.sin(φ2);
+              const φi = Math.atan2(z, Math.sqrt(x * x + y * y));
+              const λi = Math.atan2(y, x);
+              
+              position = {
+                lat: toDeg(φi),
+                lon: toDeg(λi)
+              };
+            } else {
+              // Rhumb line interpolation (linear)
+              position = {
+                lat: prev.lat + (curr.lat - prev.lat) * fraction,
+                lon: prev.lon + (curr.lon - prev.lon) * fraction
+              };
+            }
+            break;
+          } else {
+            remainingHours -= legHours;
+          }
+          
+          if (i === markers.length - 1 && remainingHours > 0) {
+            
+            position = {
+              lat: curr.lat,
+              lon: curr.lon
+            };
+          }
+        }
+        
+        if (position) {
+          positions.push(position);
+        } else {
+          
+          positions.push({
+            lat: markers[0].lat,
+            lon: markers[0].lon
+          });
+        }
+      }
+      
+      
+      analysisData = {
+        timePoints: timePoints,
+        positions: positions,
+        windSpeed: [],
+        swellHeight: [],
+        windWaveHeight: [],
+        pressure: [],
+        temperature: [],
+        currentSpeed: [],
+        labels: []
+      };
+      
+      try {
+        for (let i = 0; i < positions.length; i++) {
+          const position = positions[i];
+          const hoursFromDeparture = timePoints[i];
+          const targetTimeMs = depTime.getTime() + (hoursFromDeparture * 3600 * 1000);
+          
+          
+          const timeLabel = hoursFromDeparture + 'h';
+          analysisData.labels.push(timeLabel);
+          
+          
+          const weatherData = await fetchWeatherForPositionAndTime(position.lat, position.lon, targetTimeMs);
+          
+          
+          if (weatherData && weatherData.forecast) {
+            const fcEntry = weatherData.forecast;
+            
+            
+            if (fcEntry.wind?.speed !== undefined) {
+              analysisData.windSpeed.push(fcEntry.wind.speed * 1.943844);
+            } else {
+              analysisData.windSpeed.push(0);
+            }
+            
+            
+            if (fcEntry.main?.pressure !== undefined) {
+              analysisData.pressure.push(fcEntry.main.pressure);
+            } else {
+              analysisData.pressure.push(1013);
+            }
+            
+            
+            if (fcEntry.main?.temp !== undefined) {
+              analysisData.temperature.push(fcEntry.main.temp);
+            } else {
+              analysisData.temperature.push(15);
+            }
+          } else {
+            analysisData.windSpeed.push(0);
+            analysisData.pressure.push(1013);
+            analysisData.temperature.push(15);
+          }
+          
+          
+          if (weatherData && weatherData.marine) {
+            const marine = weatherData.marine;
+            
+            
+            if (marine.swell_wave_height !== null && marine.swell_wave_height !== undefined) {
+              analysisData.swellHeight.push(marine.swell_wave_height);
+            } else {
+              analysisData.swellHeight.push(0);
+            }
+            
+            
+            if (marine.wind_wave_height !== null && marine.wind_wave_height !== undefined) {
+              analysisData.windWaveHeight.push(marine.wind_wave_height);
+            } else {
+              analysisData.windWaveHeight.push(0);
+            }
+          } else {
+            analysisData.swellHeight.push(0);
+            analysisData.windWaveHeight.push(0);
+          }
+          
+          
+          const stdCurrent = getStandardCurrentAt(position.lat, position.lon);
+          if (stdCurrent.speedKn !== null) {
+            analysisData.currentSpeed.push(stdCurrent.speedKn);
+          } else {
+            analysisData.currentSpeed.push(0);
+          }
+        }
+        
+        
+        renderAnalysisGraphs();
+        
+        
+        noRouteMessage.style.display = "none";
+        graphContainer.style.display = "grid";
+        
+      } catch (error) {
+        console.error("Error during route analysis:", error);
+        noRouteMessage.innerHTML = "<div>Error analyzing route. Please try again.</div>";
+        noRouteMessage.style.display = "block";
+        graphContainer.style.display = "none";
+      }
+    }
+    
+    function renderAnalysisGraphs() {
+      if (!analysisData) return;
+      
+      const ctxOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true,
+            labels: {
+              color: '#d1d5db'
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: {
+              color: '#374151'
+            },
+            ticks: {
+              color: '#9ca3af'
+            }
+          },
+          y: {
+            grid: {
+              color: '#374151'
+            },
+            ticks: {
+              color: '#9ca3af'
+            }
+          }
+        }
+      };
+      
+      
+      Object.values(analysisCharts).forEach(chart => {
+        if (chart) chart.destroy();
+      });
+      
+      
+      const windCtx = document.getElementById('windGraph').getContext('2d');
+      analysisCharts.wind = new Chart(windCtx, {
+        type: 'line',
+        data: {
+          labels: analysisData.labels,
+          datasets: [{
+            label: 'Wind Speed (knots)',
+            data: analysisData.windSpeed,
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          ...ctxOptions,
+          plugins: {
+            ...ctxOptions.plugins,
+            title: {
+              display: false
+            }
+          }
+        }
+      });
+      
+     
+      const swellCtx = document.getElementById('swellGraph').getContext('2d');
+      analysisCharts.swell = new Chart(swellCtx, {
+        type: 'line',
+        data: {
+          labels: analysisData.labels,
+          datasets: [{
+            label: 'Swell Height (m)',
+            data: analysisData.swellHeight,
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: ctxOptions
+      });
+      
+      
+      const windWaveCtx = document.getElementById('windWaveGraph').getContext('2d');
+      analysisCharts.windWave = new Chart(windWaveCtx, {
+        type: 'line',
+        data: {
+          labels: analysisData.labels,
+          datasets: [{
+            label: 'Wind Wave Height (m)',
+            data: analysisData.windWaveHeight,
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: ctxOptions
+      });
+      
+      
+      const pressureCtx = document.getElementById('pressureGraph').getContext('2d');
+      analysisCharts.pressure = new Chart(pressureCtx, {
+        type: 'line',
+        data: {
+          labels: analysisData.labels,
+          datasets: [{
+            label: 'Pressure (mb)',
+            data: analysisData.pressure,
+            borderColor: '#8b5cf6',
+            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: ctxOptions
+      });
+      
+      
+      const tempCtx = document.getElementById('temperatureGraph').getContext('2d');
+      analysisCharts.temperature = new Chart(tempCtx, {
+        type: 'line',
+        data: {
+          labels: analysisData.labels,
+          datasets: [{
+            label: 'Temperature (°C)',
+            data: analysisData.temperature,
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: ctxOptions
+      });
+      
+      
+      const currentCtx = document.getElementById('currentGraph').getContext('2d');
+      analysisCharts.current = new Chart(currentCtx, {
+        type: 'line',
+        data: {
+          labels: analysisData.labels,
+          datasets: [{
+            label: 'Current Speed (knots)',
+            data: analysisData.currentSpeed,
+            borderColor: '#06b6d4',
+            backgroundColor: 'rgba(6, 182, 212, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: ctxOptions
+      });
+    }
 
     async function fetchWeatherAndForecast(lat,lon){
       try{
