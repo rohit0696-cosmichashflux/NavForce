@@ -19,7 +19,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.3/jspdf.plugin.autotable.min.js"
           crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   
-  
+  <!-- Add Chart.js for graphs -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
@@ -159,7 +159,7 @@
       border-bottom:7px solid #22cafe;
     }
 
-    
+    /* Route Analysis Panel */
     .route-analysis-panel {
       position:fixed;
       top:50%;
@@ -257,6 +257,37 @@
       font-size:0.85rem;
     }
     
+    /* Add new styles for graph controls */
+    .graph-controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    
+    .graph-select-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .graph-select-container label {
+      font-size: 0.85rem;
+      color: #d1d5db;
+      white-space: nowrap;
+    }
+    
+    .graph-select-container select {
+      background: #374151;
+      color: #f9fafb;
+      border: 1px solid #4b5563;
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: 0.85rem;
+      min-width: 180px;
+    }
+    
     .no-route-message {
       text-align:center;
       padding:40px;
@@ -283,6 +314,20 @@
       
       .graph-container {
         grid-template-columns:1fr;
+      }
+      
+      .graph-controls {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .graph-select-container {
+        width: 100%;
+      }
+      
+      .graph-select-container select {
+        width: 100%;
+        min-width: unset;
       }
     }
     @media (max-height:450px){
@@ -328,7 +373,7 @@
     <button id="homeBtn" title="Home">🏠 Home</button>
     <button id="contactBtn" title="Contact">Contact</button>
     <button id="toggleForecastBtn">Show forecast</button>
-    
+    <!-- Add Route Analysis Button -->
     <button id="routeAnalysisBtn" title="Route Analysis" style="background:#1e40af;color:#fff;">Route Analysis</button>
   </div>
 
@@ -380,7 +425,7 @@
     </table>
   </div>
 
-  
+  <!-- Add Route Analysis Panel -->
   <div class="route-analysis-panel" id="routeAnalysisPanel">
     <div class="route-analysis-header">
       <h2>Route Analysis (6-96 hours)</h2>
@@ -410,33 +455,57 @@
       </button>
     </div>
     
+    <!-- Add Graph Selection Controls -->
+    <div class="graph-controls">
+      <div class="graph-select-container">
+        <label for="graphSelection">Show Graphs:</label>
+        <select id="graphSelection" multiple style="height: 120px;">
+          <option value="wind" selected>Wind Speed (knots)</option>
+          <option value="swell" selected>Swell Height (m)</option>
+          <option value="windWave" selected>Wind Wave Height (m)</option>
+          <option value="pressure" selected>Pressure (mb)</option>
+          <option value="temperature" selected>Temperature (°C)</option>
+          <option value="current" selected>Current Speed (knots)</option>
+        </select>
+      </div>
+      <button id="applyGraphSelection" style="padding:5px 10px;background:#10b981;color:#fff;border:none;border-radius:6px;cursor:pointer;">
+        Apply Selection
+      </button>
+      <button id="selectAllGraphs" style="padding:5px 10px;background:#3b82f6;color:#fff;border:none;border-radius:6px;cursor:pointer;">
+        Select All
+      </button>
+      <button id="deselectAllGraphs" style="padding:5px 10px;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;">
+        Deselect All
+      </button>
+    </div>
+    
     <div id="analysisContent">
       <div class="no-route-message" id="noRouteMessage">
         No route available for analysis. Please create a route with waypoints first.
       </div>
       
       <div class="graph-container" id="graphContainer" style="display:none;">
-        <div class="graph-card">
+        <div class="graph-card" data-graph-type="wind">
           <div class="graph-title">Wind Speed (knots)</div>
           <canvas class="graph-canvas" id="windGraph"></canvas>
         </div>
-        <div class="graph-card">
+        <div class="graph-card" data-graph-type="swell">
           <div class="graph-title">Swell Height (m)</div>
           <canvas class="graph-canvas" id="swellGraph"></canvas>
         </div>
-        <div class="graph-card">
+        <div class="graph-card" data-graph-type="windWave">
           <div class="graph-title">Wind Wave Height (m)</div>
           <canvas class="graph-canvas" id="windWaveGraph"></canvas>
         </div>
-        <div class="graph-card">
+        <div class="graph-card" data-graph-type="pressure">
           <div class="graph-title">Pressure (mb)</div>
           <canvas class="graph-canvas" id="pressureGraph"></canvas>
         </div>
-        <div class="graph-card">
+        <div class="graph-card" data-graph-type="temperature">
           <div class="graph-title">Temperature (°C)</div>
           <canvas class="graph-canvas" id="temperatureGraph"></canvas>
         </div>
-        <div class="graph-card">
+        <div class="graph-card" data-graph-type="current">
           <div class="graph-title">Current Speed (knots)</div>
           <canvas class="graph-canvas" id="currentGraph"></canvas>
         </div>
@@ -485,7 +554,7 @@
     let legTrackTypes = [];
     let legLines = [];
     
-    
+    // Store analysis data
     let analysisData = null;
     let analysisCharts = {};
 
@@ -493,7 +562,7 @@
     const panelContent = document.getElementById("panelContent");
     const closePanel = document.getElementById("closePanel");
     
-    
+    // Route Analysis elements
     const routeAnalysisBtn = document.getElementById("routeAnalysisBtn");
     const routeAnalysisPanel = document.getElementById("routeAnalysisPanel");
     const closeAnalysisBtn = document.getElementById("closeAnalysisBtn");
@@ -502,6 +571,12 @@
     const refreshAnalysisBtn = document.getElementById("refreshAnalysisBtn");
     const noRouteMessage = document.getElementById("noRouteMessage");
     const graphContainer = document.getElementById("graphContainer");
+    
+    // New elements for graph selection
+    const graphSelection = document.getElementById("graphSelection");
+    const applyGraphSelectionBtn = document.getElementById("applyGraphSelection");
+    const selectAllGraphsBtn = document.getElementById("selectAllGraphs");
+    const deselectAllGraphsBtn = document.getElementById("deselectAllGraphs");
 
     const forecastBar = document.getElementById("forecastBar");
     const forecastItems = document.getElementById("forecastItems");
@@ -535,12 +610,12 @@
       maxZoom:19,minZoom:1,attribution:"© OpenStreetMap contributors"
     }).addTo(map);
 
-    
+    // Initialize datetime input with current UTC time
     const now = new Date();
     const utcString = now.toISOString().slice(0, 16);
     departureUtcInput.value = utcString;
 
-    
+    // Event listeners for route analysis
     routeAnalysisBtn.onclick = () => {
       if (markers.length < 2) {
         alert("Please create a route with at least 2 waypoints to analyze.");
@@ -548,6 +623,8 @@
       }
       performRouteAnalysis();
       routeAnalysisPanel.classList.add("active");
+      // Apply current graph selection
+      applyGraphVisibility();
     };
     
     closeAnalysisBtn.onclick = () => {
@@ -560,6 +637,23 @@
         return;
       }
       performRouteAnalysis();
+    };
+    
+    // Event listeners for graph selection
+    applyGraphSelectionBtn.onclick = applyGraphVisibility;
+    
+    selectAllGraphsBtn.onclick = () => {
+      Array.from(graphSelection.options).forEach(option => {
+        option.selected = true;
+      });
+      applyGraphVisibility();
+    };
+    
+    deselectAllGraphsBtn.onclick = () => {
+      Array.from(graphSelection.options).forEach(option => {
+        option.selected = false;
+      });
+      applyGraphVisibility();
     };
 
     homeBtn.onclick = () => { window.location.href = "index.html"; };
@@ -574,424 +668,438 @@
     function toRad(d){return d*Math.PI/180;}
     function toDeg(r){return r*180/Math.PI;}
 
-    
+    // --- Standard ocean surface currents (very coarse climatology) ---
     const standardCurrents = [
-      
+      // Atlantic
       {
         name: "North Equatorial Current (Atl)",
         basin: "Atlantic",
         speedKn: 0.6,
         dirDeg: 270,
-        latMin: 5, latMax: 20,
-        lonMin: -60, lonMax: -15
+        latMin: 5,
+        latMax: 20,
+        lonMin: -60,
+        lonMax: -15
       },
       {
         name: "South Equatorial Current (Atl)",
         basin: "Atlantic",
         speedKn: 0.6,
         dirDeg: 270,
-        latMin: -20, latMax: 0,
-        lonMin: -40, lonMax: 10
+        latMin: -20,
+        latMax: 0,
+        lonMin: -40,
+        lonMax: 10
       },
-       {
-    name: "Kamchatka Current",
-    basin: "Bering",
-    speedKn: 1.5,
-    dirDeg: 180,
-    latMin: 55,
-    latMax: 62,
-    lonMin: 160,
-    lonMax: 175
-  },
-  {
-    name: "Bering Slope Current",
-    basin: "Bering",
-    speedKn: 1.0,
-    dirDeg: 315,
-    latMin: 54,
-    latMax: 60,
-    lonMin: -175,
-    lonMax: -165
-  },
-  {
-    name: "Aleutian North Slope Current",
-    basin: "Bering",
-    speedKn: 1.2,
-    dirDeg: 90,
-    latMin: 51,
-    latMax: 54,
-    lonMin: -175,
-    lonMax: -165
-  },
+      {
+        name: "Kamchatka Current",
+        basin: "Bering",
+        speedKn: 1.5,
+        dirDeg: 180,
+        latMin: 55,
+        latMax: 62,
+        lonMin: 160,
+        lonMax: 175
+      },
+      {
+        name: "Bering Slope Current",
+        basin: "Bering",
+        speedKn: 1.0,
+        dirDeg: 315,
+        latMin: 54,
+        latMax: 60,
+        lonMin: -175,
+        lonMax: -165
+      },
+      {
+        name: "Aleutian North Slope Current",
+        basin: "Bering",
+        speedKn: 1.2,
+        dirDeg: 90,
+        latMin: 51,
+        latMax: 54,
+        lonMin: -175,
+        lonMax: -165
+      },
       {
         name: "Equatorial Countercurrent (Atl)",
         basin: "Atlantic",
         speedKn: 0.5,
         dirDeg: 90,
-        latMin: -3, latMax: 5,
-        lonMin: -40, lonMax: 10
+        latMin: -3,
+        latMax: 5,
+        lonMin: -40,
+        lonMax: 10
       },
-        {
-    name: "Gibraltar Surface Inflow",
-    basin: "Atlantic–Mediterranean",
-    speedKn: 2.0,
-    dirDeg: 90,
-    latMin: 35,
-    latMax: 37,
-    lonMin: -6.5,
-    lonMax: -4.5
-  },
-  {
-    name: "Gibraltar Deep Outflow",
-    basin: "Atlantic–Mediterranean",
-    speedKn: 1.5,
-    dirDeg: 270,
-    latMin: 35,
-    latMax: 37,
-    lonMin: -6.5,
-    lonMax: -4.5
-  },
-       {
-    name: "Sunda Strait Flood Current",
-    basin: "Java Sea–Indian Ocean",
-    speedKn: 1.0,
-    dirDeg: 45,
-    latMin: -6.5,
-    latMax: -5.0,
-    lonMin: 104.5,
-    lonMax: 106.5
-  },
-  {
-  name: "Bass Strait Tidal Current",
-  basin: "Bass Strait",
-  speedKn: 2.5,
-  dirDeg: 270,
-  latMin: -41,
-  latMax: -38,
-  lonMin: 143,
-  lonMax: 149
-},
-  {
-    name: "Sunda Strait Ebb Current",
-    basin: "Java Sea–Indian Ocean",
-    speedKn: 1.3,
-    dirDeg: 225,
-    latMin: -6.5,
-    latMax: -5.0,
-    lonMin: 104.5,
-    lonMax: 106.5
-  },
-  {
-  name: "Lombok Strait Throughflow",
-  basin: "Java Sea–Indian Ocean",
-  speedKn: 2.0,
-  dirDeg: 180,
-  latMin: -9,
-  latMax: -8,
-  lonMin: 115,
-  lonMax: 116
-},
- {
-    name: "Sulu Sea Monsoon Current",
-    basin: "Sulu",
-    speedKn: 1.5,
-    dirDeg: 315,
-    latMin: 5,
-    latMax: 12,
-    lonMin: 118,
-    lonMax: 123
-  },
-  {
-    name: "Celebes Sea ITF Current",
-    basin: "Celebes",
-    speedKn: 2.0,
-    dirDeg: 225,
-    latMin: 0,
-    latMax: 7,
-    lonMin: 120,
-    lonMax: 126
-  },
-  {
-    name: "Torres Strait Tidal Current",
-    basin: "Arafura–Coral",
-    speedKn: 2.0,
-    dirDeg: 270,
-    latMin: -11,
-    latMax: -9,
-    lonMin: 141,
-    lonMax: 144
-  },
-  {
-    name: "Dalian Strait Tidal Current",
-    basin: "Yellow",
-    speedKn: 1.0,
-    dirDeg: 90,
-    latMin: 38,
-    latMax: 39,
-    lonMin: 121,
-    lonMax: 123
-  },
-  {
-    name: "Singapore Strait Residual Current",
-    basin: "Singapore",
-    speedKn: 1.0,
-    dirDeg: 270,
-    latMin: 1,
-    latMax: 2,
-    lonMin: 103,
-    lonMax: 105
-  },
-  {
-    name: "Malacca Strait Tidal Current",
-    basin: "Malacca",
-    speedKn: 2.0,
-    dirDeg: 315,
-    latMin: 2,
-    latMax: 6,
-    lonMin: 99,
-    lonMax: 103
-  },
-       {
-    name: "Red Sea Eastern Boundary Current",
-    basin: "Red Sea",
-    speedKn: 0.4,
-    dirDeg: 0,
-    latMin: 12,
-    latMax: 28,
-    lonMin: 33,
-    lonMax: 37
-  },
-  {
-    name: "Hormuz Surface Inflow",
-    basin: "Persian Gulf",
-    speedKn: 0.5,
-    dirDeg: 315,
-    latMin: 25,
-    latMax: 27,
-    lonMin: 56,
-    lonMax: 58
-  },
-  {
-    name: "Hormuz Bottom Outflow",
-    basin: "Persian Gulf",
-    speedKn: 0.6,
-    dirDeg: 135,
-    latMin: 25,
-    latMax: 27,
-    lonMin: 56,
-    lonMax: 58
-  },
-  {
-  name: "Gulf of Aqaba Surface Current",
-  basin: "Red Sea",
-  speedKn: 0.5,
-  dirDeg: 0,
-  latMin: 27,
-  latMax: 29,
-  lonMin: 34,
-  lonMax: 35
-},
-  {
-    name: "Bab-el-Mandeb Surface Current",
-    basin: "Red Sea",
-    speedKn: 0.8,
-    dirDeg: 90,
-    latMin: 12,
-    latMax: 13,
-    lonMin: 42,
-    lonMax: 44
-  },
-  {
-    name: "Bab-el-Mandeb Undercurrent",
-    basin: "Red Sea",
-    speedKn: 1.0,
-    dirDeg: 270,
-    latMin: 12,
-    latMax: 13,
-    lonMin: 42,
-    lonMax: 44
-  },
       {
-    name: "North Atlantic Drift",
-    basin: "Atlantic",
-    speedKn: 1.0,
-    dirDeg: 45,
-    latMin: 40,
-    latMax: 60,
-    lonMin: -70,
-    lonMax: 0
-  },
-  {
-    name: "Algerian Current",
-    basin: "Mediterranean",
-    speedKn: 0.5,
-    dirDeg: 90,
-    latMin: 35,
-    latMax: 40,
-    lonMin: -5,
-    lonMax: 15
-  },
-  {
-    name: "Tyrrhenian Current",
-    basin: "Mediterranean",
-    speedKn: 0.4,
-    dirDeg: 180,
-    latMin: 38,
-    latMax: 42,
-    lonMin: 10,
-    lonMax: 15
-  },
-  {
-    name: "Ionian Current",
-    basin: "Mediterranean",
-    speedKn: 0.6,
-    dirDeg: 135,
-    latMin: 35,
-    latMax: 40,
-    lonMin: 15,
-    lonMax: 22
-  },
-  {
-    name: "Levantine Current",
-    basin: "Mediterranean",
-    speedKn: 0.5,
-    dirDeg: 45,
-    latMin: 30,
-    latMax: 37,
-    lonMin: 22,
-    lonMax: 36
-  },
-  {
-    name: "Adriatic Current",
-    basin: "Mediterranean",
-    speedKn: 0.4,
-    dirDeg: 180,
-    latMin: 40,
-    latMax: 45,
-    lonMin: 13,
-    lonMax: 20
-  },
-  {
-    name: "Northern Current",
-    basin: "Mediterranean",
-    speedKn: 0.5,
-    dirDeg: 270,
-    latMin: 40,
-    latMax: 44,
-    lonMin: 5,
-    lonMax: 10
-  },
-  {
-  name: "Falkland Current",
-  basin: "Atlantic",
-  speedKn: 1.2,
-  dirDeg: 0,
-  latMin: -60,
-  latMax: -30,
-  lonMin: -70,
-  lonMax: -45
-},
- {
-    name: "East Greenland Current",
-    basin: "Atlantic",
-    speedKn: 0.6,
-    dirDeg: 180,
-    latMin: 60,
-    latMax: 80,
-    lonMin: -45,
-    lonMax: -10
-  },
-  {
-    name: "Antarctic Circumpolar Current",
-    basin: "Southern",
-    speedKn: 1.7,
-    dirDeg: 90,
-    latMin: -60,
-    latMax: -40,
-    lonMin: -180,
-    lonMax: 180
-  },
- {
-    name: "Alaska Current",
-    basin: "Pacific",
-    speedKn: 1.0,
-    dirDeg: 225,
-    latMin: 48,
-    latMax: 60,
-    lonMin: -140,
-    lonMax: -120
-  },
-  {
-    name: "Norwegian Current",
-    basin: "Atlantic",
-    speedKn: 1.2,
-    dirDeg: 45,
-    latMin: 55,
-    latMax: 70,
-    lonMin: 0,
-    lonMax: 20
-  },
-  {
-    name: "Irminger Current",
-    basin: "Atlantic",
-    speedKn: 1.2,
-    dirDeg: 270,
-    latMin: 55,
-    latMax: 65,
-    lonMin: -30,
-    lonMax: -10
-  },
-  {
-    name: "Labrador Current",
-    basin: "Atlantic",
-    speedKn: 0.8,
-    dirDeg: 180,
-    latMin: 50,
-    latMax: 65,
-    lonMin: -70,
-    lonMax: -50
-  },
-  {
-    name: "South Atlantic Current",
-    basin: "Atlantic",
-    speedKn: 1.0,
-    dirDeg: 90,
-    latMin: -40,
-    latMax: -20,
-    lonMin: -40,
-    lonMax: 20
-  },
+        name: "Gibraltar Surface Inflow",
+        basin: "Atlantic–Mediterranean",
+        speedKn: 2.0,
+        dirDeg: 90,
+        latMin: 35,
+        latMax: 37,
+        lonMin: -6.5,
+        lonMax: -4.5
+      },
+      {
+        name: "Gibraltar Deep Outflow",
+        basin: "Atlantic–Mediterranean",
+        speedKn: 1.5,
+        dirDeg: 270,
+        latMin: 35,
+        latMax: 37,
+        lonMin: -6.5,
+        lonMax: -4.5
+      },
+      {
+        name: "Sunda Strait Flood Current",
+        basin: "Java Sea–Indian Ocean",
+        speedKn: 1.0,
+        dirDeg: 45,
+        latMin: -6.5,
+        latMax: -5.0,
+        lonMin: 104.5,
+        lonMax: 106.5
+      },
+      {
+        name: "Bass Strait Tidal Current",
+        basin: "Bass Strait",
+        speedKn: 2.5,
+        dirDeg: 270,
+        latMin: -41,
+        latMax: -38,
+        lonMin: 143,
+        lonMax: 149
+      },
+      {
+        name: "Sunda Strait Ebb Current",
+        basin: "Java Sea–Indian Ocean",
+        speedKn: 1.3,
+        dirDeg: 225,
+        latMin: -6.5,
+        latMax: -5.0,
+        lonMin: 104.5,
+        lonMax: 106.5
+      },
+      {
+        name: "Lombok Strait Throughflow",
+        basin: "Java Sea–Indian Ocean",
+        speedKn: 2.0,
+        dirDeg: 180,
+        latMin: -9,
+        latMax: -8,
+        lonMin: 115,
+        lonMax: 116
+      },
+      {
+        name: "Sulu Sea Monsoon Current",
+        basin: "Sulu",
+        speedKn: 1.5,
+        dirDeg: 315,
+        latMin: 5,
+        latMax: 12,
+        lonMin: 118,
+        lonMax: 123
+      },
+      {
+        name: "Celebes Sea ITF Current",
+        basin: "Celebes",
+        speedKn: 2.0,
+        dirDeg: 225,
+        latMin: 0,
+        latMax: 7,
+        lonMin: 120,
+        lonMax: 126
+      },
+      {
+        name: "Torres Strait Tidal Current",
+        basin: "Arafura–Coral",
+        speedKn: 2.0,
+        dirDeg: 270,
+        latMin: -11,
+        latMax: -9,
+        lonMin: 141,
+        lonMax: 144
+      },
+      {
+        name: "Dalian Strait Tidal Current",
+        basin: "Yellow",
+        speedKn: 1.0,
+        dirDeg: 90,
+        latMin: 38,
+        latMax: 39,
+        lonMin: 121,
+        lonMax: 123
+      },
+      {
+        name: "Singapore Strait Residual Current",
+        basin: "Singapore",
+        speedKn: 1.0,
+        dirDeg: 270,
+        latMin: 1,
+        latMax: 2,
+        lonMin: 103,
+        lonMax: 105
+      },
+      {
+        name: "Malacca Strait Tidal Current",
+        basin: "Malacca",
+        speedKn: 2.0,
+        dirDeg: 315,
+        latMin: 2,
+        latMax: 6,
+        lonMin: 99,
+        lonMax: 103
+      },
+      {
+        name: "Red Sea Eastern Boundary Current",
+        basin: "Red Sea",
+        speedKn: 0.4,
+        dirDeg: 0,
+        latMin: 12,
+        latMax: 28,
+        lonMin: 33,
+        lonMax: 37
+      },
+      {
+        name: "Hormuz Surface Inflow",
+        basin: "Persian Gulf",
+        speedKn: 0.5,
+        dirDeg: 315,
+        latMin: 25,
+        latMax: 27,
+        lonMin: 56,
+        lonMax: 58
+      },
+      {
+        name: "Hormuz Bottom Outflow",
+        basin: "Persian Gulf",
+        speedKn: 0.6,
+        dirDeg: 135,
+        latMin: 25,
+        latMax: 27,
+        lonMin: 56,
+        lonMax: 58
+      },
+      {
+        name: "Gulf of Aqaba Surface Current",
+        basin: "Red Sea",
+        speedKn: 0.5,
+        dirDeg: 0,
+        latMin: 27,
+        latMax: 29,
+        lonMin: 34,
+        lonMax: 35
+      },
+      {
+        name: "Bab-el-Mandeb Surface Current",
+        basin: "Red Sea",
+        speedKn: 0.8,
+        dirDeg: 90,
+        latMin: 12,
+        latMax: 13,
+        lonMin: 42,
+        lonMax: 44
+      },
+      {
+        name: "Bab-el-Mandeb Undercurrent",
+        basin: "Red Sea",
+        speedKn: 1.0,
+        dirDeg: 270,
+        latMin: 12,
+        latMax: 13,
+        lonMin: 42,
+        lonMax: 44
+      },
+      {
+        name: "North Atlantic Drift",
+        basin: "Atlantic",
+        speedKn: 1.0,
+        dirDeg: 45,
+        latMin: 40,
+        latMax: 60,
+        lonMin: -70,
+        lonMax: 0
+      },
+      {
+        name: "Algerian Current",
+        basin: "Mediterranean",
+        speedKn: 0.5,
+        dirDeg: 90,
+        latMin: 35,
+        latMax: 40,
+        lonMin: -5,
+        lonMax: 15
+      },
+      {
+        name: "Tyrrhenian Current",
+        basin: "Mediterranean",
+        speedKn: 0.4,
+        dirDeg: 180,
+        latMin: 38,
+        latMax: 42,
+        lonMin: 10,
+        lonMax: 15
+      },
+      {
+        name: "Ionian Current",
+        basin: "Mediterranean",
+        speedKn: 0.6,
+        dirDeg: 135,
+        latMin: 35,
+        latMax: 40,
+        lonMin: 15,
+        lonMax: 22
+      },
+      {
+        name: "Levantine Current",
+        basin: "Mediterranean",
+        speedKn: 0.5,
+        dirDeg: 45,
+        latMin: 30,
+        latMax: 37,
+        lonMin: 22,
+        lonMax: 36
+      },
+      {
+        name: "Adriatic Current",
+        basin: "Mediterranean",
+        speedKn: 0.4,
+        dirDeg: 180,
+        latMin: 40,
+        latMax: 45,
+        lonMin: 13,
+        lonMax: 20
+      },
+      {
+        name: "Northern Current",
+        basin: "Mediterranean",
+        speedKn: 0.5,
+        dirDeg: 270,
+        latMin: 40,
+        latMax: 44,
+        lonMin: 5,
+        lonMax: 10
+      },
+      {
+        name: "Falkland Current",
+        basin: "Atlantic",
+        speedKn: 1.2,
+        dirDeg: 0,
+        latMin: -60,
+        latMax: -30,
+        lonMin: -70,
+        lonMax: -45
+      },
+      {
+        name: "East Greenland Current",
+        basin: "Atlantic",
+        speedKn: 0.6,
+        dirDeg: 180,
+        latMin: 60,
+        latMax: 80,
+        lonMin: -45,
+        lonMax: -10
+      },
+      {
+        name: "Antarctic Circumpolar Current",
+        basin: "Southern",
+        speedKn: 1.7,
+        dirDeg: 90,
+        latMin: -60,
+        latMax: -40,
+        lonMin: -180,
+        lonMax: 180
+      },
+      {
+        name: "Alaska Current",
+        basin: "Pacific",
+        speedKn: 1.0,
+        dirDeg: 225,
+        latMin: 48,
+        latMax: 60,
+        lonMin: -140,
+        lonMax: -120
+      },
+      {
+        name: "Norwegian Current",
+        basin: "Atlantic",
+        speedKn: 1.2,
+        dirDeg: 45,
+        latMin: 55,
+        latMax: 70,
+        lonMin: 0,
+        lonMax: 20
+      },
+      {
+        name: "Irminger Current",
+        basin: "Atlantic",
+        speedKn: 1.2,
+        dirDeg: 270,
+        latMin: 55,
+        latMax: 65,
+        lonMin: -30,
+        lonMax: -10
+      },
+      {
+        name: "Labrador Current",
+        basin: "Atlantic",
+        speedKn: 0.8,
+        dirDeg: 180,
+        latMin: 50,
+        latMax: 65,
+        lonMin: -70,
+        lonMax: -50
+      },
+      {
+        name: "South Atlantic Current",
+        basin: "Atlantic",
+        speedKn: 1.0,
+        dirDeg: 90,
+        latMin: -40,
+        latMax: -20,
+        lonMin: -40,
+        lonMax: 20
+      },
       {
         name: "Gulf Stream",
         basin: "Atlantic",
         speedKn: 1.5,
         dirDeg: 45,
-        latMin: 25, latMax: 45,
-        lonMin: -80, lonMax: -40
+        latMin: 25,
+        latMax: 45,
+        lonMin: -80,
+        lonMax: -40
       },
       {
         name: "Canary Current",
         basin: "Atlantic",
         speedKn: 0.4,
         dirDeg: 210,
-        latMin: 10, latMax: 35,
-        lonMin: -30, lonMax: -5
+        latMin: 10,
+        latMax: 35,
+        lonMin: -30,
+        lonMax: -5
       },
       {
         name: "Brazil Current",
         basin: "Atlantic",
         speedKn: 0.7,
         dirDeg: 225,
-        latMin: -35, latMax: -15,
-        lonMin: -55, lonMax: -35
+        latMin: -35,
+        latMax: -15,
+        lonMin: -55,
+        lonMax: -35
       },
       {
         name: "Benguela Current",
         basin: "Atlantic",
         speedKn: 0.5,
         dirDeg: 330,
-        latMin: -35, latMax: -10,
-        lonMin: -15, lonMax: 15
+        latMin: -35,
+        latMax: -10,
+        lonMin: -15,
+        lonMax: 15
       },
 
       // Pacific
@@ -1000,8 +1108,10 @@
         basin: "Pacific",
         speedKn: 0.8,
         dirDeg: 270,
-        latMin: 5, latMax: 18,
-        lonMin: 140, lonMax: -80
+        latMin: 5,
+        latMax: 18,
+        lonMin: 140,
+        lonMax: -80
       },
       {
         name: "West Wind Drift",
@@ -1018,48 +1128,60 @@
         basin: "Pacific",
         speedKn: 0.7,
         dirDeg: 270,
-        latMin: -20, latMax: 0,
-        lonMin: 150, lonMax: -80
+        latMin: -20,
+        latMax: 0,
+        lonMin: 150,
+        lonMax: -80
       },
       {
         name: "Equatorial Countercurrent (Pac)",
         basin: "Pacific",
         speedKn: 0.6,
         dirDeg: 90,
-        latMin: -3, latMax: 5,
-        lonMin: 150, lonMax: -80
+        latMin: -3,
+        latMax: 5,
+        lonMin: 150,
+        lonMax: -80
       },
       {
         name: "Kuroshio Current",
         basin: "Pacific",
         speedKn: 1.5,
         dirDeg: 45,
-        latMin: 15, latMax: 35,
-        lonMin: 120, lonMax: 170
+        latMin: 15,
+        latMax: 35,
+        lonMin: 120,
+        lonMax: 170
       },
       {
         name: "California Current",
         basin: "Pacific",
         speedKn: 0.4,
         dirDeg: 135,
-        latMin: 45, latMax: 20,
-        lonMin: -140, lonMax: -115
+        latMin: 45,
+        latMax: 20,
+        lonMin: -140,
+        lonMax: -115
       },
       {
         name: "East Australian Current",
         basin: "Pacific",
         speedKn: 0.8,
         dirDeg: 225,
-        latMin: -15, latMax: -40,
-        lonMin: 145, lonMax: 170
+        latMin: -15,
+        latMax: -40,
+        lonMin: 145,
+        lonMax: 170
       },
       {
         name: "Humboldt (Peru) Current",
         basin: "Pacific",
         speedKn: 0.5,
         dirDeg: 330,
-        latMin: -45, latMax: 0,
-        lonMin: -90, lonMax: -70
+        latMin: -45,
+        latMax: 0,
+        lonMin: -90,
+        lonMax: -70
       },
 
       // Indian
@@ -1068,16 +1190,20 @@
         basin: "Indian",
         speedKn: 0.6,
         dirDeg: 270,
-        latMin: -20, latMax: 0,
-        lonMin: 40, lonMax: 110
+        latMin: -20,
+        latMax: 0,
+        lonMin: 40,
+        lonMax: 110
       },
       {
         name: "Agulhas Current",
         basin: "Indian",
         speedKn: 1.5,
         dirDeg: 225,
-        latMin: -35, latMax: -15,
-        lonMin: 32, lonMax: 45
+        latMin: -35,
+        latMax: -15,
+        lonMin: 32,
+        lonMax: 45
       },
       {
         name: "Oyashio Current",
@@ -1098,34 +1224,36 @@
         latMax: 10,
         lonMin: 60,
         lonMax: 90
-  },
-  {
-    name: "Mozambique Current",
-    basin: "Indian",
-    speedKn: 1.2,
-    dirDeg: 180,
-    latMin: -15,
-    latMax: -25,
-    lonMin: 35,
-    lonMax: 40
-  },
-  {
-    name: "Somali Current",
-    basin: "Indian",
-    speedK: 2.0,
-    dirDeg: 90,
-    latMin: 0,
-    latMax: 10,
-    lonMin: 40,
-    lonMax: 50
-  },
+      },
+      {
+        name: "Mozambique Current",
+        basin: "Indian",
+        speedKn: 1.2,
+        dirDeg: 180,
+        latMin: -15,
+        latMax: -25,
+        lonMin: 35,
+        lonMax: 40
+      },
+      {
+        name: "Somali Current",
+        basin: "Indian",
+        speedK: 2.0,
+        dirDeg: 90,
+        latMin: 0,
+        latMax: 10,
+        lonMin: 40,
+        lonMax: 50
+      },
       {
         name: "West Australian Current",
         basin: "Indian",
         speedKn: 0.4,
         dirDeg: 315,
-        latMin: -40, latMax: -20,
-        lonMin: 110, lonMax: 125
+        latMin: -40,
+        latMax: -20,
+        lonMin: 110,
+        lonMax: 125
       }
     ];
 
@@ -1189,7 +1317,7 @@
       legLines.forEach(l=>map.removeLayer(l));
       legLines=[];
       routeTableBody.innerHTML="";
-     
+      // Clear analysis data when route is reset
       analysisData = null;
       if (routeAnalysisPanel.classList.contains("active")) {
         routeAnalysisPanel.classList.remove("active");
@@ -1379,10 +1507,11 @@
       return best;
     }
 
-    
+    // New function to fetch weather data for a specific position and time
     async function fetchWeatherForPositionAndTime(lat, lon, targetTimeMs) {
       try {
-        
+        // For weather data at specific time, we need to use the forecast API
+        // and find the closest forecast point
         const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apikey}&units=metric`;
         const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=wave_height,swell_wave_height,wind_wave_height,wave_direction,swell_wave_direction,wind_wave_direction&length=120&timezone=UTC`;
         
@@ -1394,7 +1523,7 @@
         const forecastData = forecastRes.ok ? await forecastRes.json() : null;
         const marineData = marineRes.ok ? await marineRes.json() : null;
         
-        
+        // Find closest forecast entry for the target time
         let closestForecast = null;
         if (forecastData && Array.isArray(forecastData.list)) {
           let bestDiff = Infinity;
@@ -1408,7 +1537,7 @@
           }
         }
         
-        
+        // Find closest marine data for the target time
         let closestMarine = null;
         if (marineData && marineData.hourly && Array.isArray(marineData.hourly.time)) {
           let bestDiff = Infinity;
@@ -1428,7 +1557,7 @@
           }
         }
         
-        
+        // Get standard current
         const stdCurrent = getStandardCurrentAt(lat, lon);
         
         return {
@@ -1515,7 +1644,7 @@
           <div>Wind wave height: <b>${windWave}</b> (dir <b>${windWaveDir}</b>${windWaveArrow})</div>`;
       }
 
-      
+      // --- Standard surface current at clicked location ---
       const stdCurrent = getStandardCurrentAt(lat, lon);
       let currentHtml = "";
       if (stdCurrent.speedKn != null && stdCurrent.dirDeg != null) {
@@ -1661,7 +1790,7 @@
           eta.getUTCHours().toString().padStart(2,"0")}:${
           eta.getUTCMinutes().toString().padStart(2,"0")}Z`;
 
-        
+        // Fetch weather data for this specific position and time
         let weatherData = null;
         try {
           weatherData = await fetchWeatherForPositionAndTime(m.lat, m.lon, etaMs);
@@ -1716,7 +1845,7 @@
           }
         }
 
-        
+        // --- Standard surface current at waypoint ---
         const stdCur = getStandardCurrentAt(m.lat, m.lon);
         if (stdCur.speedKn != null && stdCur.dirDeg != null) {
           curSpeedText = stdCur.speedKn.toFixed(1) + " kn";
@@ -1995,475 +2124,543 @@
       }
     });
 
-    
+    // --- Route Analysis Functions ---
     async function performRouteAnalysis() {
-      if (markers.length < 2) {
+        if (markers.length < 2) {
+            noRouteMessage.style.display = "block";
+            graphContainer.style.display = "none";
+            return;
+        }
+        
+        // Show loading state
+        noRouteMessage.innerHTML = "<div>Analyzing route data...</div>";
         noRouteMessage.style.display = "block";
         graphContainer.style.display = "none";
-        return;
-      }
-      
-      
-      noRouteMessage.innerHTML = "<div>Analyzing route data...</div>";
-      noRouteMessage.style.display = "block";
-      graphContainer.style.display = "none";
-      
-      const analysisPeriod = parseInt(analysisPeriodSelect.value, 10);
-      const analysisInterval = parseInt(analysisIntervalSelect.value, 10);
-      
-      
-      const globalSpeed = parseFloat(vesselSpeedInput.value) || 12;
-      const depStr = departureUtcInput.value;
-      const depTime = new Date(depStr + "Z");
-      
-      
-      let totalHours = 0;
-      for (let i = 1; i < markers.length; i++) {
-        const prev = markers[i-1];
-        const curr = markers[i];
-        const legTrack = legTrackTypes[i] || "rl";
-        const legSpeed = legSpeeds[i] || globalSpeed;
         
-        let dist = 0;
-        if (legTrack === "gc") {
-          dist = gcDistanceNm(prev.lat, prev.lon, curr.lat, curr.lon);
-        } else {
-          dist = rlDistanceNm(prev.lat, prev.lon, curr.lat, curr.lon);
+        const analysisPeriod = parseInt(analysisPeriodSelect.value, 10);
+        const analysisInterval = parseInt(analysisIntervalSelect.value, 10);
+        
+        // Collect data from route console table
+        const tableRows = routeTableBody.querySelectorAll('tr');
+        const waypointData = [];
+        
+        // Skip the last row (total row)
+        for (let i = 0; i < tableRows.length - 1; i++) {
+            const row = tableRows[i];
+            const cells = row.cells;
+            
+            // Extract data from route console
+            const lat = parseFloat(cells[1].querySelector('input')?.value || cells[1].textContent);
+            const lon = parseFloat(cells[2].querySelector('input')?.value || cells[2].textContent);
+            const etaText = cells[7].textContent.trim();
+            
+            // Parse ETA to timestamp
+            let etaTimestamp = 0;
+            if (etaText) {
+                try {
+                    // Format: DD.MM.YYYY HH:MMZ
+                    const [datePart, timePart] = etaText.split(' ');
+                    const [day, month, year] = datePart.split('.');
+                    const [hour, minute] = timePart.replace('Z', '').split(':');
+                    const etaDate = new Date(Date.UTC(year, month - 1, day, hour, minute));
+                    etaTimestamp = etaDate.getTime();
+                } catch (e) {
+                    console.error("Error parsing ETA:", e);
+                }
+            }
+            
+            // Extract weather data from route console
+            const tempText = cells[8].textContent.trim();
+            const windText = cells[9].textContent.trim();
+            const pressureText = cells[10].textContent.trim();
+            const swellText = cells[13].textContent.trim();
+            const windWaveText = cells[14].textContent.trim();
+            
+            // Parse numerical values
+            const temperature = parseFloat(tempText) || 0;
+            const pressure = parseFloat(pressureText) || 1013;
+            
+            // Parse wind speed (extract knots from string like "10.2 kt")
+            let windSpeed = 0;
+            if (windText.includes('kt')) {
+                const windMatch = windText.match(/(\d+\.?\d*)\s*kt/);
+                windSpeed = windMatch ? parseFloat(windMatch[1]) : 0;
+            }
+            
+            // Parse swell height (extract meters from string like "1.5 m / 4.9 ft")
+            let swellHeight = 0;
+            if (swellText.includes('m')) {
+                const swellMatch = swellText.match(/(\d+\.?\d*)\s*m/);
+                swellHeight = swellMatch ? parseFloat(swellMatch[1]) : 0;
+            }
+            
+            // Parse wind wave height
+            let windWaveHeight = 0;
+            if (windWaveText.includes('m')) {
+                const windWaveMatch = windWaveText.match(/(\d+\.?\d*)\s*m/);
+                windWaveHeight = windWaveMatch ? parseFloat(windWaveMatch[1]) : 0;
+            }
+            
+            // Get current data (if available)
+            const currentSpeedText = cells[17].textContent.trim();
+            let currentSpeed = 0;
+            if (currentSpeedText.includes('kn')) {
+                const currentMatch = currentSpeedText.match(/(\d+\.?\d*)\s*kn/);
+                currentSpeed = currentMatch ? parseFloat(currentMatch[1]) : 0;
+            }
+            
+            waypointData.push({
+                lat,
+                lon,
+                etaTimestamp,
+                hoursFromDeparture: etaTimestamp ? (etaTimestamp - new Date(departureUtcInput.value + 'Z').getTime()) / (3600 * 1000) : 0,
+                temperature,
+                windSpeed,
+                pressure,
+                swellHeight,
+                windWaveHeight,
+                currentSpeed
+            });
         }
         
-        totalHours += dist / legSpeed;
-      }
-      
-      
-      const maxAnalysisHours = Math.min(analysisPeriod, totalHours, 120); 
-      
-      
-      const timePoints = [];
-      const positions = [];
-      
-      for (let hour = 0; hour <= maxAnalysisHours; hour += analysisInterval) {
-        timePoints.push(hour);
+        // Filter data based on analysis period
+        const filteredData = waypointData.filter(data => 
+            data.hoursFromDeparture <= analysisPeriod
+        );
         
-        
-        let remainingHours = hour;
-        let position = null;
-        
-        for (let i = 1; i < markers.length && remainingHours > 0; i++) {
-          const prev = markers[i-1];
-          const curr = markers[i];
-          const legTrack = legTrackTypes[i] || "rl";
-          const legSpeed = legSpeeds[i] || globalSpeed;
-          
-          let dist = 0;
-          if (legTrack === "gc") {
-            dist = gcDistanceNm(prev.lat, prev.lon, curr.lat, curr.lon);
-          } else {
-            dist = rlDistanceNm(prev.lat, prev.lon, curr.lat, curr.lon);
-          }
-          
-          const legHours = dist / legSpeed;
-          
-          if (remainingHours <= legHours) {
-            // Interpolate position along this leg
-            const fraction = remainingHours / legHours;
-            
-            if (legTrack === "gc") {
-              // Great circle interpolation
-              const φ1 = toRad(prev.lat), λ1 = toRad(prev.lon);
-              const φ2 = toRad(curr.lat), λ2 = toRad(curr.lon);
-              
-              const d = 2 * Math.asin(Math.sqrt(
-                Math.sin((φ2 - φ1) / 2) ** 2 +
-                Math.cos(φ1) * Math.cos(φ2) * Math.sin((λ2 - λ1) / 2) ** 2
-              ));
-              
-              const A = Math.sin((1 - fraction) * d) / Math.sin(d);
-              const B = Math.sin(fraction * d) / Math.sin(d);
-              const x = A * Math.cos(φ1) * Math.cos(λ1) + B * Math.cos(φ2) * Math.cos(λ2);
-              const y = A * Math.cos(φ1) * Math.sin(λ1) + B * Math.cos(φ2) * Math.sin(λ2);
-              const z = A * Math.sin(φ1) + B * Math.sin(φ2);
-              const φi = Math.atan2(z, Math.sqrt(x * x + y * y));
-              const λi = Math.atan2(y, x);
-              
-              position = {
-                lat: toDeg(φi),
-                lon: toDeg(λi)
-              };
-            } else {
-              // Rhumb line interpolation (linear)
-              position = {
-                lat: prev.lat + (curr.lat - prev.lat) * fraction,
-                lon: prev.lon + (curr.lon - prev.lon) * fraction
-              };
-            }
-            break;
-          } else {
-            remainingHours -= legHours;
-          }
-          
-          if (i === markers.length - 1 && remainingHours > 0) {
-            
-            position = {
-              lat: curr.lat,
-              lon: curr.lon
-            };
-          }
+        if (filteredData.length === 0) {
+            noRouteMessage.innerHTML = "<div>No data available for the selected analysis period.</div>";
+            noRouteMessage.style.display = "block";
+            graphContainer.style.display = "none";
+            return;
         }
         
-        if (position) {
-          positions.push(position);
-        } else {
-          
-          positions.push({
-            lat: markers[0].lat,
-            lon: markers[0].lon
-          });
-        }
-      }
-      
-      
-      analysisData = {
-        timePoints: timePoints,
-        positions: positions,
-        windSpeed: [],
-        swellHeight: [],
-        windWaveHeight: [],
-        pressure: [],
-        temperature: [],
-        currentSpeed: [],
-        labels: []
-      };
-      
-      try {
-        for (let i = 0; i < positions.length; i++) {
-          const position = positions[i];
-          const hoursFromDeparture = timePoints[i];
-          const targetTimeMs = depTime.getTime() + (hoursFromDeparture * 3600 * 1000);
-          
-          
-          const timeLabel = hoursFromDeparture + 'h';
-          analysisData.labels.push(timeLabel);
-          
-          
-          const weatherData = await fetchWeatherForPositionAndTime(position.lat, position.lon, targetTimeMs);
-          
-          
-          if (weatherData && weatherData.forecast) {
-            const fcEntry = weatherData.forecast;
+        // Generate evenly spaced time points for analysis
+        const timePoints = [];
+        const positions = [];
+        const windSpeed = [];
+        const swellHeight = [];
+        const windWaveHeight = [];
+        const pressure = [];
+        const temperature = [];
+        const currentSpeed = [];
+        const labels = [];
+        
+        // Get departure time
+        const departureTime = new Date(departureUtcInput.value + 'Z').getTime();
+        
+        // Create time series with specified interval
+        for (let hour = 0; hour <= analysisPeriod; hour += analysisInterval) {
+            timePoints.push(hour);
+            labels.push(hour + 'h');
             
+            // Find the closest waypoint data for this hour
+            let closestData = null;
+            let minDiff = Infinity;
             
-            if (fcEntry.wind?.speed !== undefined) {
-              analysisData.windSpeed.push(fcEntry.wind.speed * 1.943844);
-            } else {
-              analysisData.windSpeed.push(0);
+            for (const data of filteredData) {
+                const diff = Math.abs(data.hoursFromDeparture - hour);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    closestData = data;
+                }
             }
             
-            
-            if (fcEntry.main?.pressure !== undefined) {
-              analysisData.pressure.push(fcEntry.main.pressure);
+            if (closestData) {
+                // Use the closest waypoint's data
+                positions.push({ lat: closestData.lat, lon: closestData.lon });
+                windSpeed.push(closestData.windSpeed);
+                swellHeight.push(closestData.swellHeight);
+                windWaveHeight.push(closestData.windWaveHeight);
+                pressure.push(closestData.pressure);
+                temperature.push(closestData.temperature);
+                currentSpeed.push(closestData.currentSpeed);
             } else {
-              analysisData.pressure.push(1013);
+                // Use the first waypoint's data as fallback
+                if (filteredData[0]) {
+                    positions.push({ lat: filteredData[0].lat, lon: filteredData[0].lon });
+                    windSpeed.push(filteredData[0].windSpeed);
+                    swellHeight.push(filteredData[0].swellHeight);
+                    windWaveHeight.push(filteredData[0].windWaveHeight);
+                    pressure.push(filteredData[0].pressure);
+                    temperature.push(filteredData[0].temperature);
+                    currentSpeed.push(filteredData[0].currentSpeed);
+                } else {
+                    // Fallback values
+                    positions.push({ lat: 0, lon: 0 });
+                    windSpeed.push(0);
+                    swellHeight.push(0);
+                    windWaveHeight.push(0);
+                    pressure.push(1013);
+                    temperature.push(15);
+                    currentSpeed.push(0);
+                }
             }
-            
-            
-            if (fcEntry.main?.temp !== undefined) {
-              analysisData.temperature.push(fcEntry.main.temp);
-            } else {
-              analysisData.temperature.push(15);
-            }
-          } else {
-            analysisData.windSpeed.push(0);
-            analysisData.pressure.push(1013);
-            analysisData.temperature.push(15);
-          }
-          
-          
-          if (weatherData && weatherData.marine) {
-            const marine = weatherData.marine;
-            
-            
-            if (marine.swell_wave_height !== null && marine.swell_wave_height !== undefined) {
-              analysisData.swellHeight.push(marine.swell_wave_height);
-            } else {
-              analysisData.swellHeight.push(0);
-            }
-            
-            
-            if (marine.wind_wave_height !== null && marine.wind_wave_height !== undefined) {
-              analysisData.windWaveHeight.push(marine.wind_wave_height);
-            } else {
-              analysisData.windWaveHeight.push(0);
-            }
-          } else {
-            analysisData.swellHeight.push(0);
-            analysisData.windWaveHeight.push(0);
-          }
-          
-          
-          const stdCurrent = getStandardCurrentAt(position.lat, position.lon);
-          if (stdCurrent.speedKn !== null) {
-            analysisData.currentSpeed.push(stdCurrent.speedKn);
-          } else {
-            analysisData.currentSpeed.push(0);
-          }
         }
         
+        // Store analysis data
+        analysisData = {
+            timePoints,
+            positions,
+            windSpeed,
+            swellHeight,
+            windWaveHeight,
+            pressure,
+            temperature,
+            currentSpeed,
+            labels
+        };
         
+        // Render graphs
         renderAnalysisGraphs();
         
-        
+        // Hide loading message, show graphs
         noRouteMessage.style.display = "none";
         graphContainer.style.display = "grid";
         
-      } catch (error) {
-        console.error("Error during route analysis:", error);
-        noRouteMessage.innerHTML = "<div>Error analyzing route. Please try again.</div>";
-        noRouteMessage.style.display = "block";
-        graphContainer.style.display = "none";
-      }
+        // Apply current graph selection
+        applyGraphVisibility();
+    }
+
+    function renderAnalysisGraphs() {
+        if (!analysisData) return;
+        
+        const ctxOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: {
+                        color: '#d1d5db'
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: '#374151'
+                    },
+                    ticks: {
+                        color: '#9ca3af'
+                    }
+                },
+                y: {
+                    grid: {
+                        color: '#374151'
+                    },
+                    ticks: {
+                        color: '#9ca3af',
+                        // Use whole numbers for Y-axis
+                        callback: function(value) {
+                            return Number.isInteger(value) ? value : '';
+                        }
+                    },
+                    // Ensure whole number ticks
+                    beginAtZero: true,
+                    precision: 0
+                }
+            }
+        };
+        
+        // Destroy existing charts
+        Object.values(analysisCharts).forEach(chart => {
+            if (chart) chart.destroy();
+        });
+        
+        // Wind Speed Graph
+        const windCtx = document.getElementById('windGraph').getContext('2d');
+        analysisCharts.wind = new Chart(windCtx, {
+            type: 'line',
+            data: {
+                labels: analysisData.labels,
+                datasets: [{
+                    label: 'Wind Speed (knots)',
+                    data: analysisData.windSpeed,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                ...ctxOptions,
+                plugins: {
+                    ...ctxOptions.plugins,
+                    title: {
+                        display: false
+                    }
+                }
+            }
+        });
+        
+        // Swell Height Graph
+        const swellCtx = document.getElementById('swellGraph').getContext('2d');
+        analysisCharts.swell = new Chart(swellCtx, {
+            type: 'line',
+            data: {
+                labels: analysisData.labels,
+                datasets: [{
+                    label: 'Swell Height (m)',
+                    data: analysisData.swellHeight,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: ctxOptions
+        });
+        
+        // Wind Wave Height Graph
+        const windWaveCtx = document.getElementById('windWaveGraph').getContext('2d');
+        analysisCharts.windWave = new Chart(windWaveCtx, {
+            type: 'line',
+            data: {
+                labels: analysisData.labels,
+                datasets: [{
+                    label: 'Wind Wave Height (m)',
+                    data: analysisData.windWaveHeight,
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: ctxOptions
+        });
+        
+        // Pressure Graph - Dynamic Y-axis based on route console data with 3mb grid spacing
+        const pressureCtx = document.getElementById('pressureGraph').getContext('2d');
+
+        // Calculate min and max pressure from route console data
+        const pressureValues = analysisData.pressure;
+        const minPressure = Math.min(...pressureValues);
+        const maxPressure = Math.max(...pressureValues);
+
+        // Round min down to nearest multiple of 3 and max up to nearest multiple of 3
+        const roundedMin = Math.floor(minPressure / 3) * 3;
+        const roundedMax = Math.ceil(maxPressure / 3) * 3;
+
+        // Add some padding (6mb = 2 grid lines)
+        const paddedMin = Math.max(roundedMin - 6, 870); // Don't go below 870
+        const paddedMax = Math.min(roundedMax + 6, 1084); // Don't go above 1084
+
+        analysisCharts.pressure = new Chart(pressureCtx, {
+            type: 'line',
+            data: {
+                labels: analysisData.labels,
+                datasets: [{
+                    label: 'Pressure (mb)',
+                    data: analysisData.pressure,
+                    borderColor: '#8b5cf6',
+                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                ...ctxOptions,
+                scales: {
+                    x: {
+                        ...ctxOptions.scales.x
+                    },
+                    y: {
+                        // Dynamic Y-axis range based on route console data
+                        min: paddedMin,
+                        max: paddedMax,
+                        grid: {
+                            color: '#374151',
+                            // Draw grid lines every 3 mb
+                            lineWidth: function(context) {
+                                const value = context.tick.value;
+                                // Check if value is divisible by 3 for 3mb spacing
+                                return Math.abs(value % 3) < 0.001 ? 1 : 0;
+                            }
+                        },
+                        ticks: {
+                            color: '#9ca3af',
+                            // Only show whole numbers
+                            callback: function(value) {
+                                return Number.isInteger(value) ? value : '';
+                            },
+                            // Force whole numbers
+                            precision: 0,
+                            // Auto generate ticks
+                            autoSkip: true,
+                            maxTicksLimit: 15
+                        },
+                        // Generate ticks with 3mb spacing
+                        afterBuildTicks: function(axis) {
+                            const ticks = [];
+                            // Start from the nearest multiple of 3 above paddedMin
+                            let start = Math.ceil(paddedMin / 3) * 3;
+                            // End at the nearest multiple of 3 below paddedMax
+                            let end = Math.floor(paddedMax / 3) * 3;
+                            
+                            for (let i = start; i <= end; i += 3) {
+                                ticks.push({ value: i });
+                            }
+                            axis.ticks = ticks;
+                            return ticks;
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Temperature Graph
+        const tempCtx = document.getElementById('temperatureGraph').getContext('2d');
+        analysisCharts.temperature = new Chart(tempCtx, {
+            type: 'line',
+            data: {
+                labels: analysisData.labels,
+                datasets: [{
+                    label: 'Temperature (°C)',
+                    data: analysisData.temperature,
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: ctxOptions
+        });
+        
+        // Current Speed Graph
+        const currentCtx = document.getElementById('currentGraph').getContext('2d');
+        analysisCharts.current = new Chart(currentCtx, {
+            type: 'line',
+            data: {
+                labels: analysisData.labels,
+                datasets: [{
+                    label: 'Current Speed (knots)',
+                    data: analysisData.currentSpeed,
+                    borderColor: '#06b6d4',
+                    backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: ctxOptions
+        });
     }
     
-    function renderAnalysisGraphs() {
-      if (!analysisData) return;
-      
-      const ctxOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: true,
-            labels: {
-              color: '#d1d5db'
+    // Function to apply graph visibility based on selection
+    function applyGraphVisibility() {
+        const selectedGraphs = Array.from(graphSelection.selectedOptions).map(opt => opt.value);
+        
+        // Get all graph cards
+        const graphCards = document.querySelectorAll('.graph-card');
+        
+        graphCards.forEach(card => {
+            const graphType = card.getAttribute('data-graph-type');
+            if (selectedGraphs.includes(graphType)) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
             }
-          }
-        },
-        scales: {
-          x: {
-            grid: {
-              color: '#374151'
-            },
-            ticks: {
-              color: '#9ca3af'
-            }
-          },
-          y: {
-            grid: {
-              color: '#374151'
-            },
-            ticks: {
-              color: '#9ca3af'
-            }
-          }
+        });
+        
+        // Update grid layout based on visible cards
+        const visibleCards = Array.from(graphCards).filter(card => card.style.display !== 'none');
+        
+        // Determine grid columns based on visible count
+        let gridColumns = 'repeat(2, 1fr)';
+        if (visibleCards.length === 1) {
+            gridColumns = '1fr';
+        } else if (visibleCards.length >= 3 && window.innerWidth > 600) {
+            gridColumns = 'repeat(2, 1fr)';
         }
-      };
-      
-      
-      Object.values(analysisCharts).forEach(chart => {
-        if (chart) chart.destroy();
-      });
-      
-      
-      const windCtx = document.getElementById('windGraph').getContext('2d');
-      analysisCharts.wind = new Chart(windCtx, {
-        type: 'line',
-        data: {
-          labels: analysisData.labels,
-          datasets: [{
-            label: 'Wind Speed (knots)',
-            data: analysisData.windSpeed,
-            borderColor: '#3b82f6',
-            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.4
-          }]
-        },
-        options: {
-          ...ctxOptions,
-          plugins: {
-            ...ctxOptions.plugins,
-            title: {
-              display: false
-            }
-          }
-        }
-      });
-      
-     
-      const swellCtx = document.getElementById('swellGraph').getContext('2d');
-      analysisCharts.swell = new Chart(swellCtx, {
-        type: 'line',
-        data: {
-          labels: analysisData.labels,
-          datasets: [{
-            label: 'Swell Height (m)',
-            data: analysisData.swellHeight,
-            borderColor: '#10b981',
-            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.4
-          }]
-        },
-        options: ctxOptions
-      });
-      
-      
-      const windWaveCtx = document.getElementById('windWaveGraph').getContext('2d');
-      analysisCharts.windWave = new Chart(windWaveCtx, {
-        type: 'line',
-        data: {
-          labels: analysisData.labels,
-          datasets: [{
-            label: 'Wind Wave Height (m)',
-            data: analysisData.windWaveHeight,
-            borderColor: '#f59e0b',
-            backgroundColor: 'rgba(245, 158, 11, 0.1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.4
-          }]
-        },
-        options: ctxOptions
-      });
-      
-      
-      const pressureCtx = document.getElementById('pressureGraph').getContext('2d');
-      analysisCharts.pressure = new Chart(pressureCtx, {
-        type: 'line',
-        data: {
-          labels: analysisData.labels,
-          datasets: [{
-            label: 'Pressure (mb)',
-            data: analysisData.pressure,
-            borderColor: '#8b5cf6',
-            backgroundColor: 'rgba(139, 92, 246, 0.1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.4
-          }]
-        },
-        options: ctxOptions
-      });
-      
-      
-      const tempCtx = document.getElementById('temperatureGraph').getContext('2d');
-      analysisCharts.temperature = new Chart(tempCtx, {
-        type: 'line',
-        data: {
-          labels: analysisData.labels,
-          datasets: [{
-            label: 'Temperature (°C)',
-            data: analysisData.temperature,
-            borderColor: '#ef4444',
-            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.4
-          }]
-        },
-        options: ctxOptions
-      });
-      
-      
-      const currentCtx = document.getElementById('currentGraph').getContext('2d');
-      analysisCharts.current = new Chart(currentCtx, {
-        type: 'line',
-        data: {
-          labels: analysisData.labels,
-          datasets: [{
-            label: 'Current Speed (knots)',
-            data: analysisData.currentSpeed,
-            borderColor: '#06b6d4',
-            backgroundColor: 'rgba(6, 182, 212, 0.1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.4
-          }]
-        },
-        options: ctxOptions
-      });
+        
+        graphContainer.style.gridTemplateColumns = gridColumns;
     }
 
     async function fetchWeatherAndForecast(lat,lon){
-      try{
-        const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apikey}&units=metric`;
-        const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apikey}&units=metric`;
-        const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=wave_height,swell_wave_height,wind_wave_height,wave_direction,swell_wave_direction,wind_wave_direction&length=120&timezone=UTC`;
+        try{
+            const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apikey}&units=metric`;
+            const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apikey}&units=metric`;
+            const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=wave_height,swell_wave_height,wind_wave_height,wave_direction,swell_wave_direction,wind_wave_direction&length=120&timezone=UTC`;
 
-        const [weatherRes,forecastRes,marineRes] = await Promise.all([
-          fetch(weatherUrl),
-          fetch(forecastUrl),
-          fetch(marineUrl)
-        ]);
+            const [weatherRes,forecastRes,marineRes] = await Promise.all([
+                fetch(weatherUrl),
+                fetch(forecastUrl),
+                fetch(marineUrl)
+            ]);
 
-        const weatherData = await weatherRes.json();
-        lastForecastData = forecastRes.ok ? await forecastRes.json() : null;
-        lastMarineForecast = marineRes.ok ? await marineRes.json() : null;
+            const weatherData = await weatherRes.json();
+            lastForecastData = forecastRes.ok ? await forecastRes.json() : null;
+            lastMarineForecast = marineRes.ok ? await marineRes.json() : null;
 
-        showWeatherPanel(weatherData,lat,lon,lastMarineForecast);
-        renderForecastBar();
-        if(enableWaypointsTop.checked) updateRouteTable();
-      }catch(err){
-        alert("Error fetching weather data. Please try again.");
-        console.error(err);
-      }
+            showWeatherPanel(weatherData,lat,lon,lastMarineForecast);
+            renderForecastBar();
+            if(enableWaypointsTop.checked) updateRouteTable();
+        }catch(err){
+            alert("Error fetching weather data. Please try again.");
+            console.error(err);
+        }
     }
 
     placeGo.onclick = handlePlaceSearch;
     placeInput.addEventListener("keypress",e=>{
-      if(e.key==="Enter"){
-        e.preventDefault();
-        handlePlaceSearch();
-      }
+        if(e.key==="Enter"){
+            e.preventDefault();
+            handlePlaceSearch();
+        }
     });
 
     async function handlePlaceSearch(){
-      const place=placeInput.value.trim();
-      if(!place) return;
-      try{
-        const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(place)}&appid=${apikey}&units=metric`;
-        const res = await fetch(url);
-        const data = await res.json();
-        if(!res.ok || !data.coord){
-          alert("Place not found or API error");
-          return;
+        const place=placeInput.value.trim();
+        if(!place) return;
+        try{
+            const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(place)}&appid=${apikey}&units=metric`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if(!res.ok || !data.coord){
+                alert("Place not found or API error");
+                return;
+            }
+            const lat=data.coord.lat, lon=data.coord.lon;
+            map.setView([lat,lon],4);
+            if(enableWaypointsTop.checked) addWaypoint(lat,lon);
+            else addSingleMarker(lat,lon);
+            await fetchWeatherAndForecast(lat,lon);
+        }catch(err){
+            alert("Error fetching place weather. Please try again.");
+            console.error(err);
         }
-        const lat=data.coord.lat, lon=data.coord.lon;
-        map.setView([lat,lon],4);
-        if(enableWaypointsTop.checked) addWaypoint(lat,lon);
-        else addSingleMarker(lat,lon);
-        await fetchWeatherAndForecast(lat,lon);
-      }catch(err){
-        alert("Error fetching place weather. Please try again.");
-        console.error(err);
-      }
     }
 
     latLonGo.onclick = handleLatLonSearch;
     async function handleLatLonSearch(){
-      const latDeg = parseFloat(document.getElementById("latDegTop").value);
-      const latMin = parseFloat(document.getElementById("latMinTop").value);
-      const lonDeg = parseFloat(document.getElementById("lonDegTop").value);
-      const lonMin = parseFloat(document.getElementById("lonMinTop").value);
-      const latHem = document.getElementById("latHemTop").value;
-      const lonHem = document.getElementById("lonHemTop").value;
+        const latDeg = parseFloat(document.getElementById("latDegTop").value);
+        const latMin = parseFloat(document.getElementById("latMinTop").value);
+        const lonDeg = parseFloat(document.getElementById("lonDegTop").value);
+        const lonMin = parseFloat(document.getElementById("lonMinTop").value);
+        const latHem = document.getElementById("latHemTop").value;
+        const lonHem = document.getElementById("lonHemTop").value;
 
-      if (Number.isNaN(latDeg) || Number.isNaN(latMin) ||
-          Number.isNaN(lonDeg) || Number.isNaN(lonMin)) {
-        alert("Enter degrees and minutes for both latitude and longitude.");
-        return;
-      }
+        if (Number.isNaN(latDeg) || Number.isNaN(latMin) ||
+            Number.isNaN(lonDeg) || Number.isNaN(lonMin)) {
+            alert("Enter degrees and minutes for both latitude and longitude.");
+            return;
+        }
 
-      let lat = latDeg + latMin/60;
-      let lon = lonDeg + lonMin/60;
-      if (latHem === "S") lat = -lat;
-      if (lonHem === "W") lon = -lon;
+        let lat = latDeg + latMin/60;
+        let lon = lonDeg + lonMin/60;
+        if (latHem === "S") lat = -lat;
+        if (lonHem === "W") lon = -lon;
 
-      map.setView([lat,lon],4);
-      if(enableWaypointsTop.checked) addWaypoint(lat,lon);
-      else addSingleMarker(lat,lon);
-      fetchWeatherAndForecast(lat,lon);
+        map.setView([lat,lon],4);
+        if(enableWaypointsTop.checked) addWaypoint(lat,lon);
+        else addSingleMarker(lat,lon);
+        fetchWeatherAndForecast(lat,lon);
     }
   </script>
 </body>
